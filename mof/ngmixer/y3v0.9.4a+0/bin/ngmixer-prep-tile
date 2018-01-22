@@ -1,0 +1,249 @@
+#!/cvmfs/des.opensciencegrid.org/2015_Q2/eeups/SL6/eups/packages/Linux64/python/2.7.9+1/bin/python
+"""
+Prepare files for running ngmixer on one DES coadd tile.
+
+Fetches input MEDS and PSF files to a directory under $MEDS_DIR
+"""
+from __future__ import print_function
+
+import argparse
+import os
+import sys
+import re
+import csv
+import subprocess
+import shutil
+
+from ngmixer import files
+
+from argparse import RawTextHelpFormatter
+parser = argparse.ArgumentParser(
+    description=__doc__,
+    formatter_class=RawTextHelpFormatter,
+)
+
+parser.add_argument(
+    'tilename',
+    help=('Name of tile or tile_id to process, e.g. '
+          'DES0123-4567 or DES0123-4567_r2590p01'),
+)
+parser.add_argument(
+    'tileset',
+    help='List of DESDM paths to Y3A1_COADD meds, list files',
+)
+parser.add_argument(
+    'psfset',
+    help='List of DESDM paths to Y3A1_FINALCUT .psf files',
+)
+
+"""
+# not used
+parser.add_argument(
+    '--release',
+    help='Release tag, i.e. Y3A1_COADD, currently assumed',
+    default='Y3A1_COADD',
+)
+"""
+
+parser.add_argument(
+    '--clobber',
+    action='store_true',
+    help='over-write existing files',
+)
+
+parser.add_argument(
+    '--nograbmeds',
+    action='store_true',
+    help='Should we not fetch the MEDS files from NCSA?',
+)
+parser.add_argument(
+    '--nograblists',
+    action='store_true',
+    help='Should we not fetch the list files from NCSA?',
+)
+parser.add_argument(
+    '--nograbpsfs',
+    action='store_true',
+    help='Should we not fetch the PSF files from NCSA?',
+)
+parser.add_argument(
+    '--bands',
+    required=False,
+    help='Set of bands to process, default griz',
+    default='griz',
+)
+parser.add_argument(
+    '--coaddrooturl',
+    help='Root path to DESDM file tree for coadd inputs',
+    default='https://desar2.cosmology.illinois.edu/DESFiles/desarchive/OPS/multiepoch',
+)
+
+parser.add_argument(
+    '--campaign',
+    help='processing campaign',
+    default='Y3A1',
+)
+
+
+parser.add_argument(
+    '--serooturl',
+    help='Root path to DESDM file tree for Y3A1_FINALCUT (single epoch) psf inputs',
+    default='https://desar2.cosmology.illinois.edu/DESFiles/desarchive/OPS/finalcut',
+)
+
+def fetch_remote(local_dir, remote_url, clobber=False):
+    """
+    first copy into a temp directory, then move
+    this is the only good way to make wget "do the right thing"
+    """
+
+
+    bname=os.path.basename(remote_url)
+    local_file = os.path.join(
+        local_dir,
+        bname,
+    )
+
+    if not clobber and os.path.exists(local_file):
+        return
+
+    if os.path.exists(local_file):
+        os.remove(local_file)
+
+    tmp_dir = os.path.join(local_dir, '.tmp')
+    makedirs(tmp_dir)
+    tmp_file = os.path.join(
+        tmp_dir,
+        bname,
+    )
+    if os.path.exists(tmp_file):
+        os.remove(tmp_file)
+
+    print("syncing:",remote_url)
+    res=subprocess.call(["wget","-q","-P",tmp_dir,remote_url])
+    if res != 0:
+        raise IOError("could not copy url: '%s'" % remote_url)
+
+    print("moving:",tmp_file, local_file)
+    shutil.move(tmp_file, local_file)
+
+def makedirs(dir):
+    if dir=='' or dir is None:
+        return
+
+    try:
+        os.stat(dir)
+    except:
+        try:
+            os.makedirs(dir)
+        except:
+            # probably a race condition
+            pass
+
+
+def fetchinputs(args):
+    """
+    fetch the inputs and write the psf map file into
+    the psf directory
+    """
+
+    tilename=args.tilename
+    if '_' in tilename:
+        # this is a tile_id
+        tilename=tilename.split('_')[0]
+
+    print("syncing files for tile:",tilename)
+
+
+    meds_paths = {}
+    list_paths = {}
+
+    reader = csv.reader(open(args.tileset,'r'))
+    for row in reader:
+        t,mp,lp = row
+        meds_paths[t] = mp
+        list_paths[t] = lp
+
+    meds_dir=files.get_meds_dir_fromfile(meds_paths[tilename])
+    psf_dir=files.get_psf_dir_fromfile(meds_paths[tilename])
+
+    print("meds dir:",meds_dir)
+    print("psf dir:",psf_dir)
+
+    pat1='.*(D00[0-9][0-9][0-9][0-9][0-9][0-9]).*c([0-9][0-9])_nwgint.*'
+    pat2='.*(D00[0-9][0-9][0-9][0-9][0-9][0-9])_.*'
+
+    psf_paths = {}
+
+    info=files.get_meds_info(meds_paths[tilename])
+
+    psf_map_output = files.get_psfmap_file(
+        info['campaign'],
+        info['tile_id'],
+    )
+
+    with open(args.psfset) as readpsflist:
+        for line in readpsflist:
+            psf_rel_path = line.strip()
+
+
+            m=re.match(pat2,line)
+            if m:
+                expname=m.group(1)
+                psf_paths[expname] = psf_rel_path
+
+                bname=os.path.basename(psf_rel_path)
+
+
+                out_pattern=os.path.join(
+                    psf_dir,
+                    os.path.basename(psf_rel_path),
+                )
+
+
+    meds_list=[]	
+
+    print("writing psf map file:",psf_map_output)
+    makedirs(os.path.dirname(psf_map_output))
+
+    with open(psf_map_output,'w') as psf_map_fobj:
+        for band in args.bands:
+
+            print("    %s" % band)
+
+            meds_file=meds_paths[tilename].replace('BAND',band)
+            meds_url=os.path.join(args.coaddrooturl, args.campaign, meds_file)
+            meds_local = os.path.join(meds_dir, os.path.basename(meds_file))
+            meds_list.append(meds_local)
+
+            if not args.nograbmeds:
+                fetch_remote(meds_dir, meds_url, clobber=args.clobber)
+
+            listfile=list_paths[tilename].replace('BAND',band)
+            local_listfile = os.path.join(meds_dir, os.path.basename(listfile))
+
+            list_url=os.path.join(args.coaddrooturl, args.campaign, listfile)
+            if not args.nograblists:
+                fetch_remote(meds_dir, list_url, clobber=args.clobber)
+
+            with open(local_listfile) as listread:
+                for line in listread:
+                    m=re.match(pat1,line)
+                    if m:
+                        expname=m.group(1)
+                        ccdnum=m.group(2)
+
+                        key='%s-%s' % (expname, ccdnum)
+
+                        psffile=re.sub('%02d',ccdnum,psf_paths[expname])
+
+                        local_file=os.path.join(psf_dir, os.path.basename(psffile))
+                        psf_map_fobj.write('%s %s\n' % (key, local_file))
+
+                        psf_url=os.path.join( args.serooturl, psffile )
+                        if not args.nograbpsfs:
+                            fetch_remote(psf_dir, psf_url, clobber=args.clobber)
+
+if __name__ == "__main__":
+    args=parser.parse_args()
+    fetchinputs(args)

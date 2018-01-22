@@ -1,0 +1,67 @@
+#!/cvmfs/des.opensciencegrid.org/2015_Q2/eeups/SL6/eups/packages/Linux64/python/2.7.9+1/bin/python
+
+import argparse
+import os
+import sys
+import time
+from despymisc.miscutils import elapsed_time
+import subprocess
+from ngmixer import ngmixit_tools 
+
+EXE = 'ngmixer-meds-make-nbrs-data'
+
+if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser(description="Define the inputs for ngmixit and run")
+
+    parser.add_argument("--meds_list", type=str, action="store",default=None, required=True,
+                        help="Name of file containing filenames and bands for the input meds")
+    parser.add_argument("--bands", type=str, action="store",default=['g',], required=False, nargs='+',
+                        help="Ordered list of bands to use")
+    parser.add_argument("--dryrun", action="store_true",default=False,
+                        help="Just print the command to be executed and exit?")
+
+    ignore_options = ['dryrun','bands','meds_list']
+    # Parse the known and extra args (as a list)
+    args, unknownargs = parser.parse_known_args()
+
+    # Fix the bands comma separated into a real list
+    args.bands = ngmixit_tools.parse_comma_separated_list(args.bands)
+
+    # Get the list of med files
+    meds_files = ngmixit_tools.read_meds_list(args.meds_list)
+
+    # And now we append to unknownargs the meds files
+    for band in args.bands:
+        unknownargs.append(meds_files[band])
+
+    # Make it a dictionary we can pop items out of it
+    dict_args = vars(args)
+
+    # We build the command-list from the known (additional) arguments
+    cmdlist = [EXE]
+    for key in dict_args:
+        if key in ignore_options: continue
+        print "# \t--%-10s\t%s" % (key,vars(args)[key])
+        cmdlist.append("--%s" % key)
+        cmdlist.append(dict_args[key])
+    # plus the extra args which are directly passed to ngmixit
+    for uarg in unknownargs:
+        cmdlist.append(uarg)
+
+    # The full command in one line
+    cmd = ' '.join(map(str, cmdlist))
+    print "# Will execute:"
+    print "# \t%s" % cmd
+
+    # Run the code now
+    t0 = time.time()
+    status = 0
+    if not args.dryrun:
+        sys.stdout.flush()
+        status = subprocess.call(cmd,shell=True)
+    # Done
+    print "# Elapsed time: %s" % elapsed_time(t0)
+    sys.exit(status)
+
+
