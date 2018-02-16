@@ -9,10 +9,14 @@ code specific to des Balrog production
 Implemented steps:
 1.Query DESDM database for a tile configuration.
 2. Run meds_prep to copy all necessary files from DESDM to $MEDS_DATA directory
-3. Unimplemented. Inject stars and galaxies into single epoch images.
-4. Create coadded images and catalogs
-5. Run meds to create meds files
-6. Run mof to create mof file.
+3. Create coadded images and catalogs
+4. Run meds to create meds files
+5. Run mof to create mof file.
+6. Generate images with injected objects in <meds_data>/<medsconf>/balrog_images/<realisation>/<tilename> (unimplemented )
+7. prepare configurations, filelists and images in each realisation subdirectory to ru the rest of the pipeline.
+8. Create coadded images and catalogs for given combination of <realisation>/<tilename>
+9. Run meds to create meds files
+10. Run mof to create mof file. ( runs complete mof at present time, will chane in future )
 
 # Environment
   See the setup_balrog.sh file to create appropriate environment.

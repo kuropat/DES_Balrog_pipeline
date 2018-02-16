@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """ The program to organize all steps necessary to produce
- meds files for Balrog project
+ meds and mof files for Balrog project
  
  By N. Kuropatkin  12/06/2017
  """
@@ -26,10 +26,14 @@ from Cython.Compiler.Naming import self_cname
 from pox import shutils
 import numpy
 import glob
-#from pathos.multiprocessing import ProcessingPool as Pool
+#
 from multiprocessing import Pool
 from Cython.Compiler.PyrexTypes import BuiltinObjectType
 from IcoImagePlugin import IcoImageFile
+from ImageMath import ops
+from pyparsing import line
+from scipy.weave.catalog import os_dependent_catalog_name
+
 try:
     from termcolor import colored
 except:
@@ -50,6 +54,7 @@ QUERY_GEOM = """
     WHERE tilename='{tilename}'
 """
 
+""" The method to make coadded images for sextractor and meds"""
 def makeCoadd(inpar):
     args = inpar[0]
     band = inpar[1]
@@ -70,6 +75,7 @@ def makeCoadd(inpar):
     coadd_assemble(tilename,restemp)     
     return
 
+" -----------------  SWARP ----------------------- "
 def SWARPcaller(ilist,wlist,msklist,flist,ra_cent,dec_cent,naxis1,naxis2,pixscale,restemp):
     imName = restemp +'_sci.fits'
     weightName = restemp +'_wgt.fits'
@@ -124,7 +130,8 @@ def SWARPcaller(ilist,wlist,msklist,flist,ra_cent,dec_cent,naxis1,naxis2,pixscal
         print "error %s"% e
     if os.path.exists(tmpImName):
         os.remove(tmpImName)
-        
+
+" ---------- coadd assemble like in DESDM ---------- "
 def coadd_assemble(tilename,restemp):
     imName = restemp +'_sci.fits'
     weightName = restemp +'_wgt.fits'
@@ -146,6 +153,8 @@ def coadd_assemble(tilename,restemp):
     except subprocess.CalledProcessError as e:
         print "error %s"% e
         
+""" -------- create list of files for SWARP 
+need to be modified after injection will be implemented  ------------ """
 def create_swarp_lists(args,band):
 
     print " make swarp list band=%s \n" % band
@@ -153,20 +162,21 @@ def create_swarp_lists(args,band):
     medsconf = args['medsconf']
     tilename = args['tilename']
     magbase = args['magbase']
-    outpathL = os.path.join(medsdir,medsconf+'/'+tilename+'/coadd/lists/')
-#    if not os.path.exists(outpathL):
-#        os.makedirs(outpathL)
-    flistP = os.path.join(medsdir,medsconf+'/'+tilename+'/lists/')
+    outpath = args['outpath']
+    datadir = args['datadir']
+    outpathL = args['listpath']
+
+    flistP = str(datadir)+'/lists/'
     filename = tilename+'_'+band+'_nullwt-flist-'+medsconf+'.dat'
     flistF = flistP+filename
 
     imext = "[0]"
     mskext = "[1]"
     wext = "[2]"
-    list_imF = outpathL+tilename+'_'+band+'_im.list'
-    list_wtF = outpathL+tilename+'_'+band+'_wt.list'
-    list_mskF = outpathL+tilename+'_'+band+'_msk.list'      
-    list_fscF = outpathL+tilename+'_'+band+'_fsc.list'
+    list_imF = outpathL+'/'+tilename+'_'+band+'_im.list'
+    list_wtF = outpathL+'/'+tilename+'_'+band+'_wt.list'
+    list_mskF = outpathL+'/'+tilename+'_'+band+'_msk.list'      
+    list_fscF = outpathL+'/'+tilename+'_'+band+'_fsc.list'
     fim = open(list_imF,'w')
     fwt = open(list_wtF,'w')
     scf = open(list_fscF,'w')
@@ -193,7 +203,8 @@ def create_swarp_lists(args,band):
     mskf.close()
     scf.close()
     return (list_imF,list_wtF,list_fscF,list_mskF)        
-        
+
+" ---------------- run s-extractor to create objects catalog --------- "        
 def makeCatalog(inpar):
 #    BalP, band = args
 #    BalP.makeCatalog(band)
@@ -212,6 +223,7 @@ def makeCatalog(inpar):
     logfile = logpath+'/'+tilename    
     SEXcaller(restemp,band,logfile)
     
+" -------------SEX ------------------- "    
 def SEXcaller(restemp,band,logtemp):
         logFile = logtemp+'_'+band+'_sextractor.log'
 
@@ -245,7 +257,7 @@ def SEXcaller(restemp,band,logtemp):
 
         flog.close()   
         
-        
+" Method to run mads maker ----------- "        
 def makeMeds(inpar):
     args = inpar[0]
     band = inpar[1]
@@ -261,17 +273,18 @@ def makeMeds(inpar):
     medsconf = args['medsconf']
     tilename = args['tilename']
     confile = args['confile']
+    datadir = args['datadir']
     restemp = outpath+'/'+tilename
     logfile = logpath+'/'+tilename    
-    fname = os.path.join(medsdir,medsconf+'/'+tilename+'/lists/')+tilename+'_'+band+'_fileconf-'+medsconf+'.yaml'
+    fname = datadir+'/lists/'+tilename+'_'+band+'_fileconf-'+medsconf+'.yaml'
     with open(fname,'r') as fconf:
         conf=yaml.load( fconf)
         print "file conf \n"
         print conf
-        objmap_url = os.path.join(medsdir,medsconf+'/'+tilename+'/lists/')+tilename+'_'+band+'_objmap-'+medsconf+'.fits'
-        seg_url = outpath+tilename+'_'+band+'_segmap.fits'
-        cimage_url = outpath+tilename+'_'+band+'.fits'
-        cat_url = outpath+tilename+'_'+band+'_cat.fits'
+        objmap_url = datadir+'/lists/'+tilename+'_'+band+'_objmap-'+medsconf+'.fits'
+        seg_url = outpath+'/'+tilename+'_'+band+'_segmap.fits'
+        cimage_url = outpath+'/'+tilename+'_'+band+'.fits'
+        cat_url = outpath+'/'+tilename+'_'+band+'_cat.fits'
         conf['coadd_object_map'] = objmap_url
         conf['coadd_image_url'] = cimage_url
         conf['coadd_cat_url'] = cat_url
@@ -293,8 +306,9 @@ def makeChunk(inpar):
     cnum = inpar[1]
     tilename = args['tilename']
     mofdir = args['mofdir']
+    datadir = args['datadir']
     medslist = args['medslist'] #mofdir+'/meds_list.txt'
-    medsdir = args['medsdir'] #/data/des51.a/data/kuropat/meds_test/y3v02/DES0347-5540'
+    medsdir = args['medsdir'] #/data/des71.a/data/kuropat/meds_test/y3v02/DES0347-5540'
     psfmapF = args['psfmap'] #medsdir+'/DES0347-5540_all_psfmap.dat'
     mofconf =args['mofconf']
     command = ['run_ngmixit','--nranges', '42',  '--wrange', '1' ,'--tilename', tilename]
@@ -329,6 +343,8 @@ class BalrogPipeline():
         self.medsdir = os.getenv('MEDS_DATA')
         self.bbase = os.getenv('BALROG_BASE')
         self.desdata = os.getenv('DESDATA')
+        self.simData = self.medsdir + '/'+self.medsconf+'/balrog_images/'
+        print "simData = %s \n" % self.simData 
         print "meds_dir=%s \n" % self.medsdir
         self.mofconfile = mof_conf
         self.pixscale=0.2636
@@ -351,11 +367,14 @@ class BalrogPipeline():
         self.mofdir = self.tiledir +'/mof'
         if not os.path.exists(self.mofdir):
             os.makedirs(self.mofdir)
-        print "mof_dir=%s \n" % self.mofdir
+        self.realDir = ''
         self.curdir = os.getcwd()
+        self.realisationslist  = os.listdir(self.simData)
         self.outpath = os.path.join(self.medsdir,self.medsconf+'/'+self.tilename+'/coadd/')
         self.logpath = shutil.abspath(self.outpath)+'/LOGS/'
 
+    def getRealisations(self):
+        return self.realisationslist
             
     def setArgs(self,**args):
         self.inargs = args
@@ -435,15 +454,16 @@ class BalrogPipeline():
         tileinfo = dict(zip(desc, line))
         return tileinfo
 
-    def create_swarp_lists(self,band):
+    def create_swarp_lists(self,band,outpath,listpath):
 #        outpath = './coadd/'+self.tilename+'/lists/'
-        outpathL = os.path.join(self.medsdir,self.medsconf+'/'+self.tilename+'/coadd/lists/')
+        
+        outpathL = listpath
         if not os.path.exists(outpathL):
             os.makedirs(outpathL)
-        flistP = os.path.join(self.medsdir,self.medsconf+'/'+self.tilename+'/lists/')
+        flistP = outpath.split('coadd')[0] +'lists/'
         filename = self.tilename+'_'+band+'_nullwt-flist-'+self.medsconf+'.dat'
         flistF = flistP+filename
-
+        print "Flist file = %s \n" % flistF
         imext = "[0]"
         mskext = "[1]"
         wext = "[2]"
@@ -498,21 +518,22 @@ class BalrogPipeline():
                 wt_list += ','+wt_file 
         return (im_list,wt_list,msk_list)
      
-    def makeCoadd(self,band):
-
+    def makeCoadd(self,band,outpath,tilepath):
+        logpath = outpath+'/LOGS/'
+        listpath = outpath+'/lists/'
         ra_cent = self.tileinfo['RA_CENT']
         dec_cent = self.tileinfo['DEC_CENT']
         naxis1 = self.tileinfo['NAXIS1']
         naxis2 = self.tileinfo['NAXIS2']
         self.pixscale = self.tileinfo['PIXELSCALE']
-        if not os.path.exists(self.outpath):
-            os.makedirs(self.outpath)
-        if not os.path.exists(self.logpath):
-            os.makedirs(self.logpath)
+        if not os.path.exists(outpath):
+            os.makedirs(outpath)
+        if not os.path.exists(logpath):
+            os.makedirs(logpath)
         " Create coadd images for given band "
 
-        restemp = self.outpath+'/'+self.tilename+'_'+band
-        (images,weights,masks,fluxes) = self.create_swarp_lists(band)
+        restemp = outpath+'/'+self.tilename+'_'+band
+        (images,weights,masks,fluxes) = self.create_swarp_lists(band,outpath,listpath)
         self.SWARPcaller(images,weights,fluxes,masks,ra_cent,dec_cent,naxis1,naxis2,restemp)
 #        byband[band] = (images,weights,fluxes)
         self.coadd_assemble(restemp)     
@@ -573,19 +594,24 @@ class BalrogPipeline():
         if os.path.exists(tmpImName):
             os.remove(tmpImName)
             
-    def CombineFits(self,restemp):
+    def CombineFits(self,resFile,simFile,origFile):
+        template = resFile.split('/')[-1]
+        restemp = template.split('.fits')[0]
         imName = restemp +'_sci.fits'
         weightName = restemp +'_wgt.fits'
         maskName = restemp + '_msk.fits'
         outName = restemp + '.fits'
         " read sci image "
-        sciIm,imHdr = fitsio.read(imName, ext =0, header=True)
-        wgtIm,wgtHdr = fitsio.read(weightName, ext=0, header=True)
-        mskIm,mskHdr = fitsio.read(maskName, ext=0, header=True)
+        sciIm,imHdr = fitsio.read(simFile, ext =0, header=True)
+        mskIm,mskHdr = fitsio.read(origFile, ext=1, header=True)
+        wgtIm,wgtHdr = fitsio.read(origFile, ext=2, header=True)
         i1 = imHdr['NAXIS1']
         i2 = imHdr['NAXIS2']
         " Now write all 3 extensions in the output file "
-        fits = fitsio.FITS(outName,'rw')
+#        print "resFile=%s \n" % resFile
+        if os.path.exists(resFile):
+            os.remove(resFile)
+        fits = fitsio.FITS(resFile,'rw')
         
         fits.write( sciIm,header=imHdr)
 
@@ -700,20 +726,33 @@ class BalrogPipeline():
         except subprocess.CalledProcessError as e:
             print "error %s"% e
         if os.path.exists(tmpImName):
-            os.remove(tmpImName)   
+            os.remove(tmpImName)  
             
+    " Clean coadd files we do not need any more " 
+    def cleanCoadds(self,coaddir):
+        scifiles = glob.glob(coaddir+'/*_sci.fits')
+        for sciF in scifiles:
+            os.remove(sciF)
+        mskfiles = glob.glob(coaddir+'/*_msk.fits')
+        for mskF in mskfiles:
+            os.remove(mskF)
+        wgtfiles = glob.glob(coaddir+'/*_wgt.fits')
+        for wgtF in wgtfiles:
+            os.remove(wgtF)
                     
     " read catalog to find its length and create a fake objmap"
     def make_fake_objmap(self,catfile,fname):
         fitsio.read(catfile)
-        self.coadd_cat = fitsio.read(catfile, lower=True)
-
+        coadd_cat = fitsio.read(catfile, lower=True)
+        print "Creating objmap %s \n" % fname
         # sort just in case, not needed ever AFIK
-        q = numpy.argsort(self.coadd_cat['number'])
-        self.coadd_cat = self.coadd_cat[q]
-        nobj = len(self.coadd_cat) 
+        q = numpy.argsort(coadd_cat['number'])
+        coadd_cat = coadd_cat[q]
+        nobj = len(coadd_cat) 
         print " Number of objects in the cat = %d \n" % nobj 
         # now write some data
+        if os.path.exists(fname):
+            os.remove(fname)
         fits = fitsio.FITS(fname,'rw')
 
         data = numpy.zeros(nobj, dtype=[('object_number','i4'),('id','i8')])
@@ -724,32 +763,35 @@ class BalrogPipeline():
         print("writing objmap:",fname)
         fitsio.write(fname, data, extname='OBJECTS',clobber=True)  
 
-    def make_meds_list(self):
-        self.medslF = self.mofdir+'/meds_list.txt'
-        outF = open(self.medslF,'w')
-        listF = glob.glob(self.tiledir+"/*meds*.fits.fz")
+    def make_meds_list(self,datadir):
+        mofdir = datadir + '/mof'
+        medslF = mofdir+'/meds_list.txt'
+        outF = open(medslF,'w')
+        listF = glob.glob(datadir+"/*meds*.fits.fz")
         for line in listF:
             filename = line.split('/')[-1]
             bandN = filename.split('_')[1]
             outF.write('%s %s \n' % (self.tiledir+'/'+filename,bandN))
-        return self.medslF
+        return medslF
      
-    def make_psf_map(self):
-        self.psfmapF = self.tiledir +'/'+self.tilename+'_all_psfmap.dat'
-        if os.path.exists(self.psfmapF):
-            os.remove(self.psfmapF)
-        listF = glob.glob(self.tiledir+"/*psfmap*.dat")
-        outF = open(self.psfmapF,'w')
+    def make_psf_map(self,datadir):
+        psfmapF = datadir +'/'+self.tilename+'_all_psfmap.dat'
+        if os.path.exists(psfmapF):
+            os.remove(psfmapF)
+        listF = glob.glob(datadir+"/*psfmap*.dat")
+        outF = open(psfmapF,'w')
         for fileN in listF:
             for line in open(fileN,'r'):
                 outF.write(line)
         outF.close()
+        return psfmapF
 
-    def makeChunkList(self):
-        chunklistF = self.mofdir +'/'+self.tilename+'_mof-chunk.list'
+    def makeChunkList(self,datadir):
+        mofdir = datadir + '/mof'
+        chunklistF = mofdir +'/'+self.tilename+'_mof-chunk.list'
         if os.path.exists(chunklistF):
             os.remove(chunklistF)
-        listF = glob.glob(self.mofdir+"/*mof-chunk*.fits")
+        listF = glob.glob(mofdir+"/*mof-chunk*.fits")
         outF = open(chunklistF,'w')
         for fileN in listF:
                 outF.write('%s \n' % fileN)
@@ -757,77 +799,88 @@ class BalrogPipeline():
         return chunklistF
      
 
-    def collate_chunks(self):
-        self.chunklistF = self.makeChunkList()
+    def collate_chunks(self,datadir):
+        chunklistF = self.makeChunkList(datadir)
+        mofdir = datadir + '/mof'
         command=['megamix-meds-collate-desdm','--noblind', 'mof-config/run-Y3A1-v4-mof.yaml']
-        command += [self.chunklistF,self.mofdir+'/'+self.tilename+'_mof.fits']
+        command += [chunklistF,mofdir+'/'+self.tilename+'_mof.fits']
         try:
             subprocess.check_output(command)
         except:
             print "failed to collate chunks \n"
             
-    def make_meds_list(self):
-        self.medslF = self.mofdir+'/meds_list.txt'
-        outF = open(self.medslF,'w')
-        listF = glob.glob(self.tiledir+"/*meds*.fits.fz")
+    def make_meds_list(self,datadir):
+        mofdir=datadir+'/mof'
+        medslF = mofdir+'/meds_list.txt'
+        outF = open(medslF,'w')
+        listF = glob.glob(datadir+"/*meds*.fits.fz")
         for line in listF:
             filename = line.split('/')[-1]
             bandN = filename.split('_')[1]
-            outF.write('%s %s \n' % (self.tiledir+'/'+filename,bandN))
-        return self.medslF    
+            outF.write('%s %s \n' % (datadir+'/'+filename,bandN))
+        return medslF    
     
-    def getMofPars(self):
-        self.psfmapF = self.tiledir +'/'+self.tilename+'_all_psfmap.dat'
-        self.medslF = self.mofdir+'/meds_list.txt'
+    def getMofPars(self,datadir):
+        mofdir = datadir + '/mof'
+        psfmapF = datadir +'/'+self.tilename+'_all_psfmap.dat'
+        medslF = mofdir+'/meds_list.txt'
+
         pars ={}
         pars['medsdir'] = self.medsdir
-        pars['mofdir'] = self.mofdir
+        pars['mofdir'] = mofdir
+        pars['datadir'] = datadir
         pars['tilename'] = self.tilename
-        pars['psfmap'] = self.psfmapF
-        pars['medslist'] = self.medslF
+        pars['psfmap'] = psfmapF
+        pars['medslist'] = medslF
         pars['mofconf'] = self.mofconfile 
         return pars
         
-    def make_nbrs_data(self):
+    def make_nbrs_data(self,datadir):
         " Firsc create mads list "
-        self.medslist = self.make_meds_list()
+        mofdir = datadir+'/mof'
+        if not os.path.exists(mofdir):
+            os.makedirs(mofdir)
+        medslist = self.make_meds_list(datadir)
         " Now create psfmap for all bands "
-        self.make_psf_map()
+        self.make_psf_map(datadir)
         "  Second run run_ngmixer-meds-make-nbrs-data for all bands "
-        command = ['run_ngmixer-meds-make-nbrs-data','./'+self.mofconfile,'--nbrs-file',self.mofdir+'/'+self.tilename+'_nbrslist.fits']
-        command +=['--fof-file',self.mofdir+'/'+self.tilename+'_fofslist.fits','--meds_list',self.medslist]
+        command = ['run_ngmixer-meds-make-nbrs-data','./'+self.mofconfile,'--nbrs-file',mofdir+'/'+self.tilename+'_nbrslist.fits']
+        command +=['--fof-file',mofdir+'/'+self.tilename+'_fofslist.fits','--meds_list',medslist]
         print command
         try:
             subprocess.check_output(command)
         except:
             print "failed to run run_ngmixer-meds-make-nbrs-data \n"
             
-    def make_psf_map(self):
-        self.psfmapF = self.tiledir +'/'+self.tilename+'_all_psfmap.dat'
-        if os.path.exists(self.psfmapF):
-            os.remove(self.psfmapF)
-        listF = glob.glob(self.tiledir+"/*psfmap*.dat")
-        outF = open(self.psfmapF,'w')
+    def make_psf_map(self,datadir):
+        psfmapF = datadir +'/'+self.tilename+'_all_psfmap.dat'
+        if os.path.exists(psfmapF):
+            os.remove(psfmapF)
+        listF = glob.glob(datadir+"/*psfmap*.dat")
+        outF = open(psfmapF,'w')
         for fileN in listF:
             for line in open(fileN,'r'):
                 outF.write(line)
         outF.close()
+        return psfmapF
         
-    def makeChunkList(self):
-        chunklistF = self.mofdir +'/'+self.tilename+'_mof-chunk.list'
+    def makeChunkList(self,datadir):
+        mofdir = datadir + '/mof'
+        chunklistF = mofdir +'/'+self.tilename+'_mof-chunk.list'
         if os.path.exists(chunklistF):
             os.remove(chunklistF)
-        listF = glob.glob(self.mofdir+"/*mof-chunk*.fits")
+        listF = glob.glob(mofdir+"/*mof-chunk*.fits")
         outF = open(chunklistF,'w')
         for fileN in listF:
                 outF.write('%s \n' % fileN)
         outF.close()
         return chunklistF
     
-    def collate_chunks(self):
-        self.chunklistF = self.makeChunkList()
+    def collate_chunks(self,datadir):
+        mofdir = datadir + '/mof'
+        chunklistF = self.makeChunkList(datadir)
         command=['megamix-meds-collate-desdm','--noblind', 'mof-config/run-Y3A1-v4-mof.yaml']
-        command += [self.chunklistF,self.mofdir+'/'+self.tilename+'_mof.fits']
+        command += [chunklistF,mofdir+'/'+self.tilename+'_mof.fits']
         try:
             subprocess.check_output(command)
         except:
@@ -857,7 +910,11 @@ class BalrogPipeline():
         "                                                               "     
         " prepare information for the coadd tile "
         
-    def getCoaddPars(self):
+    def getCoaddPars(self,datadir):
+        outpath = datadir+'/coadd/'
+        logpath = outpath +'/LOGS/'
+        outpathL = outpath+'/lists/'
+        
         pard = {}
         pard['ra_cent'] = self.tileinfo['RA_CENT']
         pard['dec_cent'] = self.tileinfo['DEC_CENT']
@@ -866,18 +923,17 @@ class BalrogPipeline():
         self.pixscale = self.tileinfo['PIXELSCALE']
         pard['pixscale'] = self.pixscale
         
-        if not os.path.exists(self.outpath):
-            os.makedirs(self.outpath)
-        if not os.path.exists(self.logpath):
-            os.makedirs(self.logpath)
-        outpathL = self.outpath+'/lists'
+        if not os.path.exists(outpath):
+            os.makedirs(outpath)
+        if not os.path.exists(logpath):
+            os.makedirs(logpath)
 
-        print "oupathL=%s \n" % outpathL
         if not os.path.exists(outpathL):
             os.makedirs(outpathL)
-        
-        pard['outpath'] = self.outpath
-        pard['logpath'] = self.logpath
+        pard['datadir'] = datadir
+        pard['outpath'] = outpath
+        pard['logpath'] = logpath
+        pard['listpath'] = outpathL
         pard['tilename'] = self.tilename
         pard['medsdir'] = self.medsdir
         pard['medsconf'] = self.medsconf
@@ -886,39 +942,144 @@ class BalrogPipeline():
         return pard
     
     def run(self):
-#        self.prepMeds()
-#        byband = {}
-        
-        " Create coadd images for each band "
-        for band in self.bands:
-            self.makeCoadd(band)
-        " Now make detection image "
-        self.makeDetectionImage()
-        " Create s-extractor catalogs "
-        for band in self.bands:
-            self.makeCatalog(band)
-        " Now create fake objectMaps "
-        self.makeObjMaps()
-        " Now crete meds for all bands "
-        for band in self.bands:
-            self.makeMeds(band)
+        self.prepMeds()
+        byband = {}
+        "  Run injection here "
+        " Prepare data for injected images "
+        self.prepInData()
+        " Create coadd images for each band and each revision "
+        for realV in self.realisationslist:
+            outpathR = os.path.join(self.medsdir,self.medsconf+'/balrog_images/'+str(realV)+'/'+self.tilename+'/coadd')
+            realD =  os.path.join(self.medsdir,self.medsconf+'/balrog_images/'+str(realV)+'/'+self.tilename)
+            print " outpathR = %s \n" % outpathR
+            logpathR = shutil.abspath(outpathR)+'/LOGS/'
+            listpathR = shutil.abspath(outpathR)+'/lists/'
+            for band in self.bands:
+               self.makeCoadd(band,outpathR,self.tiledir)
+            " Now make detection image "
+            self.makeDetectionImage(outpathR)
+            " Create s-extractor catalogs "
+            for band in self.bands:
+                self.makeCatalog(band,outpathR)
+            " Now create fake objectMaps "
+            self.makeObjMaps(realD)
+            " Now crete meds for all bands "
+            for band in self.bands:
+                self.makeMeds(band,realD)
             
-    def makeObjMaps(self):        
+            
+    " Prepare data for meds run on simulated images "
+    def prepInData(self):
+        " make list of realisations "
+        realisationslist = os.listdir(self.simData)
+        " each realisation contains tilename subrirectory "
+        for realD in realisationslist:
+            " new meds dir is simData+/realisatiuon+ tilename"
+            self.realDir = os.path.abspath(self.simData+'/'+str(realD)+'/'+self.tilename)
+            print " realDir=%s \n" % self.realDir
+            " create subdirectories in the realisation directory "
+            for band in self.bands:
+                nullw = self.realDir + '/nullwt-'+str(band)
+#                print "nullweights = %s \n" % nullw
+                if not os.path.exists(nullw):
+                    os.makedirs(nullw)
+            coaddir = self.realDir + '/coadd/'
+            if not os.path.exists(coaddir):
+                os.makedirs(coaddir)
+                os.makedirs(coaddir+'/lists')
+                os.makedirs(coaddir+'/LOGS')
+            listdir = self.realDir + '/lists'
+            if not os.path.exists(listdir):
+                os.makedirs(listdir)
+            " now copy common files "
+            psffiles = glob.glob(self.tiledir+'/*.dat')
+            for datF in psffiles:
+                dstF = datF.split('/')[-1] 
+                shutil.copyfile(datF, self.realDir+'/'+dstF)
+            " Copy list files "
+            listFiles = glob.glob(self.tiledir+'/lists/*')
+#            newLists = []
+            for listF in listFiles:
+                destF = listF.split('/')[-1]
+#                newLists.append(destF)
+                if listF.find('nullwt') > 0:
+                    self.changeList(listF,self.tiledir,self.realDir)
+                else:
+                    shutil.copyfile(listF, self.realDir+'/lists/'+destF)
+ 
+            " now create nullweight images "
+            for band in self.bands:
+                self.makeSimulatedNW(band,self.tiledir,self.realDir)
+                " Finally correct file config yaml "
+                self.YamlCorrect(band,self.realDir)
+            
+    def YamlCorrect(self,band,realDir):
+        listDir = realDir+'/lists/'
+        fileName = self.tilename+'_'+str(band)+'_fileconf-'+self.medsconf+'.yaml'
+        fileList = listDir+fileName
+#        print "fileList=%s \n" % fileList
+
+        with open(fileList,'r') as fconf:
+            conf=yaml.load( fconf)
+            fconf.close()
+        comp = 'nwgint_flist'
+        line = conf['nwgint_flist']
+        nwgFlist = line.split('/')[-1]
+        line= realDir + '/lists/'+ nwgFlist
+        conf['nwgint_flist'] = line
+        line = conf['meds_url']
+        medsF = line.split('/')[-1]
+        line = realDir +'/'+medsF
+        conf['meds_url'] = line
+        with open(fileList, 'w') as conf_f:
+            yaml.dump(conf, conf_f) 
+#        shutil.move(tempFile, fileList)
+                
+    def makeSimulatedNW(self,band,tiledir,realDir):
+        filelist = glob.glob(tiledir+'/nullwt-'+str(band)+'/*')
+        dstDir = realDir+'/nullwt-'+str(band)
+        simFDir = realDir+'/'+str(band)
+        for fileN in filelist:
+            resFile = fileN.split('/')[-1]
+            simFileName = resFile.split('immasked')[0]+'balrog_inj.fits'
+            simFile = simFDir+'/'+simFileName 
+            dstFile = dstDir+'/'+resFile
+            self.CombineFits(dstFile,simFile,fileN)
+        
+                
+    def changeList(self,listF,srcDir,realDir):
+        "  change path in each list "
+        outFile = realDir+'/lists/' + listF.split('/')[-1]
+        outF = open(outFile,'w')
+        for line in open(listF,'r'):
+            line.strip()
+            newline = realDir+'/nullwt-'+line.split('nullwt-')[1]
+            outF.write(newline)
+        outF.close()
+
+                
+    def makeObjMaps(self,outpath):  
+        print "makeObjMaps outpath=%s \n" % outpath     
         for band in self.bands:
-            fname = os.path.join(self.medsdir,self.medsconf+'/'+self.tilename)+'/lists/'+self.tilename+'_'+band+'_objmap-'+self.medsconf+'.fits'
-            catname = self.outpath+self.tilename+'_'+band+'_cat.fits'
+#            fname = os.path.join(outpath,'/lists/'+self.tilename+'_'+band+'_objmap-'+self.medsconf+'.fits')
+            fname = shutil.abspath(outpath) + '/lists/'+self.tilename+'_'+band+'_objmap-'+self.medsconf+'.fits'
+            print "Obj map file %s \n" % fname
+            catname = outpath+'/coadd/'+self.tilename+'_'+band+'_cat.fits'
+            print "makeObjMaps catname=%s n" % catname
+            if os.path.exists(fname):
+                os.remove(fname)
             self.make_fake_objmap(catname, fname)
  
-    def makeMeds(self,band):
-        fname = os.path.join(self.medsdir,self.medsconf+'/'+self.tilename+'/lists/')+self.tilename+'_'+band+'_fileconf-'+self.medsconf+'.yaml'
+    def makeMeds(self,band,outpath):
+        fname = outpath +'/lists/'+self.tilename+'_'+band+'_fileconf-'+self.medsconf+'.yaml'
         with open(fname,'r') as fconf:
             conf=yaml.load( fconf)
         print "file conf \n"
         print conf
-        objmap_url = os.path.join(self.medsdir,self.medsconf+'/'+self.tilename+'/lists/')+self.tilename+'_'+band+'_objmap-'+self.medsconf+'.fits'
-        seg_url = self.outpath+self.tilename+'_'+band+'_segmap.fits'
-        cimage_url = self.outpath+self.tilename+'_'+band+'.fits'
-        cat_url = self.outpath+self.tilename+'_'+band+'_cat.fits'
+        objmap_url = outpath +'/lists/'+self.tilename+'_'+band+'_objmap-'+self.medsconf+'.fits'
+        seg_url = outpath+'/coadd/'+self.tilename+'_'+band+'_segmap.fits'
+        cimage_url = outpath+'/coadd/'+self.tilename+'_'+band+'.fits'
+        cat_url = outpath+'/coadd/'+self.tilename+'_'+band+'_cat.fits'
         conf['coadd_object_map'] = objmap_url
         conf['coadd_image_url'] = cimage_url
         conf['coadd_cat_url'] = cat_url
@@ -932,10 +1093,10 @@ class BalrogPipeline():
         except:
             print "on meds for band %s \n" % band
               
-    def makeDetectionImage(self):   
+    def makeDetectionImage(self,outpathR):   
         print " Images are created start with detection image \n"
         "Now we have coadd images let's make detection one "
-        restemp = self.outpath+'/'+self.tilename
+        restemp = outpathR+'/'+self.tilename
         ra_cent = self.tileinfo['RA_CENT']
         dec_cent = self.tileinfo['DEC_CENT']
         naxis1 = self.tileinfo['NAXIS1']
@@ -944,18 +1105,22 @@ class BalrogPipeline():
 
         (im_list,wt_list,msk_list) = self.create_det_list(restemp)
 
-        restemp = self.outpath+'/'+self.tilename
+        restemp =  outpathR+'/'+self.tilename
         self.MakeDetImage(im_list,wt_list,msk_list,ra_cent,dec_cent,naxis1,naxis2,restemp) 
-        restemp = self.outpath+'/'+self.tilename+'_det'
+        restemp = outpathR +'/'+self.tilename+'_det'
 
         self.coadd_assemble(restemp)
-        
-        
+    
+    " clean chunk file in the mof directory "    
+    def cleanChunks(self,datadir):
+        chunklist = glob.glob(datadir+'/mof/*chunk*.fits')
+        for chunkF in chunklist:
+            os.remove(chunkF)   
 
  
-    def makeCatalog(self,band):
-        restemp = self.outpath+'/'+self.tilename
-        logfile = self.logpath+'/'+self.tilename    
+    def makeCatalog(self,band,outpath):
+        restemp = outpath+'/'+self.tilename
+        logfile = outpath+'/LOGS/'+self.tilename    
         self.SEXcaller(restemp,band,logfile)
         
 if __name__ == "__main__":
@@ -1010,45 +1175,113 @@ if __name__ == "__main__":
         print " -m <mof conf file>"
         sys.exit(-2)
     print " Start with Meds  \n"
-    
+    """ We start with the main line - create mads and mof for original tile """
     balP = BalrogPipeline(confile,tilename,mofconf)
     balP.prepMeds()
-#    balP.run()
+    datadir = balP.tiledir 
 
-    ncpu = len(balP.bands)
-    pool = Pool(ncpu)
-    args= balP.getCoaddPars()
-    pars = [(args, band) for band in balP.bands ]
-    print pars
+    
+
+    ncpu = len(balP.bands)#
 #
+    args= balP.getCoaddPars(datadir)
+    pars = [(args, band) for band in balP.bands ]
+#    print pars
+    
+
     pool = Pool(processes=ncpu)
     pool.map(makeCoadd, pars) 
-    
-    
-    balP.makeDetectionImage()
-    
-    pool.map(makeCatalog,pars)
-    
-    balP.makeObjMaps()
-    
-    pool.map(makeMeds,pars)
-    
     pool.close()
     pool.join()
-        
-    args =balP.getMofPars()
+    coaddir = datadir+'/coadd'
+    print 'det image data dir = %s \n' % coaddir
+    balP.makeDetectionImage(coaddir)
+#
+    balP.cleanCoadds(coaddir)
+#    
+    pool = Pool(processes=ncpu)
+    pool.map(makeCatalog,pars)
+#    
+    balP.makeObjMaps(datadir)
+    pool.close()
+    pool.join()
+    pool = Pool(processes=ncpu)
+    pool.map(makeMeds,pars)
+#    
+    pool.close()
+    pool.join()
+ 
+    args =balP.getMofPars(datadir)
+    args['mofdir'] = datadir+'/mof'
+    args['datadir'] = datadir
+ 
     
-#    bal.run()  
-    
-    balP.make_nbrs_data()
+    balP.make_nbrs_data(datadir)
 
     pars = [(args, chunks) for chunks in range(1,43) ]
-    print pars
+#        print pars
 #
     pool = Pool(processes=16)
     pool.map(makeChunk, pars) 
            
     pool.close()
     pool.join()
-    balP.collate_chunks()
+
+    balP.collate_chunks(datadir)
+    balP.cleanChunks(datadir)
+    #
+    """ That's the place where star and galaxy injection should be inserted if we
+    will run them in per band mode. After injection if new source filew will be created
+    we need to make new file lists for coadd """
+    " Now do thins for each realisation "
+    balP.prepInData()
+    reallist = balP.getRealisations()
+    basedir = str(balP.medsdir)+'/' + str(balP.medsconf)
+    for real in reallist:
+        datadir = basedir+'/balrog_images/' + str(real)+'/'+balP.tilename
+        
+        ncpu = len(balP.bands)#
+#
+        args= balP.getCoaddPars(datadir)
+        pars = [(args, band) for band in balP.bands ]
+ 
+        pool = Pool(processes=ncpu)
+        pool.map(makeCoadd, pars) 
+        pool.close()
+        pool.join()
+#       
+        coaddir = datadir+'/coadd'
+        balP.makeDetectionImage(coaddir)
+#
+        balP.cleanCoadds(coaddir)
+#    
+        pool = Pool(processes=ncpu)
+        pool.map(makeCatalog,pars)
+#    
+        balP.makeObjMaps(datadir)
+        pool.close()
+        pool.join()
+        pool = Pool(processes=ncpu)
+        pool.map(makeMeds,pars)
+#    
+        pool.close()
+        pool.join()
+        
+        args =balP.getMofPars(datadir)
+        args['mofdir'] = datadir+'/mof'
+        args['datadir'] = datadir
+#    bal.run()  
     
+        balP.make_nbrs_data(datadir)
+
+        pars = [(args, chunks) for chunks in range(1,43) ]
+#        print pars
+#
+        pool = Pool(processes=16)
+        pool.map(makeChunk, pars) 
+           
+        pool.close()
+        pool.join()
+
+        balP.collate_chunks(datadir)
+        balP.cleanChunks(datadir)

@@ -30,7 +30,7 @@ export BALROG_BASE=/data/des71.a/data/kuropat/balrog-base
 export PYTHONPATH=$PYTHONPATH:/data/des71.a/data/kuropat/balrog-base/lib/python2.7/site-packages/
 export DESMEDS_CONFIG_DIR=${BALROG_BASE}/desmeds-config/
 #
-export MEDS_DATA=/data/des71.a/data/kuropat/meds_test
+export MEDS_DATA=/data/des71.a/data/kuropat/balrog_test
 export DESDATA=${BALROG_BASE}/DESDATA
 export PYTHONPATH=${BALROG_BASE}/mof/ngmixer/y3v0.9.4a+1/python:$PYTHONPATH
 export PATH=${BALROG_BASE}/mof/ngmixer/y3v0.9.4a+1/bin:$PATH
