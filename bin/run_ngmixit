@@ -1,5 +1,7 @@
 #!/cvmfs/des.opensciencegrid.org/2015_Q2/eeups/SL6/eups/packages/Linux64/python/2.7.9+1/bin/python
-
+""" modified by N Kuropatkin to use random seeds as input 
+04/05/2018
+"""
 import argparse
 import os
 import sys
@@ -24,18 +26,18 @@ if __name__ == "__main__":
                         help="Number of ranges needed (i.e. number of CPUs)")
     parser.add_argument("--wrange", type=int, action="store",default=None, required=True,
                         help="Which range to use, [0, NRANGES-1]")
-    parser.add_argument("--seed_shift", type=str, action="store",default=None, required=False,
-                        help="Optional seed shift string of integers")
+    parser.add_argument("--seed", type=str, action="store",default=None, required=True,
+                        help="Integer number of random generator seed ")
     parser.add_argument("--dryrun", action="store_true",default=False,
                         help="Just print the command to be executed and exit?")
 
-    ignore_options = ['nranges','wrange','dryrun','tilename','seed_shift','bands','meds_list']
+    ignore_options = ['nranges','wrange','dryrun','tilename','bands','meds_list']
     # Parse the known and extra args (as a list)
     args, unknownargs = parser.parse_known_args()
 
     # Fix the bands comma separated into a real list
     args.bands = ngmixit_tools.parse_comma_separated_list(args.bands)
-
+    
     # Get the list of med files
     meds_files = ngmixit_tools.read_meds_list(args.meds_list)
         
@@ -65,10 +67,6 @@ if __name__ == "__main__":
     # Add the fof-range to the command line
     unknownargs.insert(0,"--fof-range %s,%s" % (j1,j2))
 
-    # Get the seed based on tilename and chunck/wrange and add it to the commandline unknownargs
-    seed = ngmixit_tools.chunkseed(args.tilename,args.wrange, shift='')
-    unknownargs.insert(1,"--seed %s" % seed)
-
 
     # And now we append to unknownargs the meds files
     for band in args.bands:
@@ -77,7 +75,6 @@ if __name__ == "__main__":
 
     # Make it a dictionary we can pop items out of it
     dict_args = vars(args)
-
     # We build the command-list from the known (additional) arguments
     cmdlist = [EXE]
     for key in dict_args:

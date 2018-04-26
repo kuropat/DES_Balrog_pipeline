@@ -1,8 +1,8 @@
-# fracdev gmix included
-run: "Y3A1-v4-mof"
+# with flag_y1_stellarhalo_masked to False
 
-global_seed: 30606
-#global_seed: 21137
+run: "y3v02-cm-001"
+
+global_seed: 22350
 
 # setup for neighbors
 nbrs:
@@ -12,22 +12,22 @@ nbrs:
     new_maxsize: 384
     check_seg: True
 
-
 # job setup
 jobs:
     # for MOF this refers to the number of FOFs in a chunk,
     # otherwise it is the number of objects
-    chunksize: 100
+    chunksize: 1000
 
     # what to do
-    bands: ['g','r','i','z']
+    bands: [g,r,i,z]
 
 collate:
     # how to combine results
     concat_type: 'concat-des'
+    blinding: "y3"
 
 
-
+# for now do regular fitting
 fitter_type: "max-ngmix-boot"
 imageio_type: "meds-des-y3"
 
@@ -37,46 +37,55 @@ fit_coadd_galaxy: False
 read_wcs: False
 read_me_wcs: False
 
+# turning off for ngmix only, since it currently
+# requires all stamps same size
 
-# mof stuff
-model_nbrs: True
-model_nbrs_method: 'subtract'
-mof:
-    maxabs_conv:  [1.0e-3,1.0e-3,1.0e-6,1.0e-6,1.0e-6,1.0e-6,1.0e-6,1.0e-6,1.0e-6]
-    maxfrac_conv: [1.0e-6,1.0e-6,1.0e-6,1.0e-6,1.0e-6,1.0e-3,1.0e-3,1.0e-3,1.0e-3]
-    maxerr_conv: 0.5 
-    max_itr: 15
-    min_itr: 10
-    min_useg_itr: 1
-    write_convergence_data: False
-    convergence_model: 'cm'
+propagate_star_flags:
+    # propagate SATURATE, INTERP between
+    # bands and epochs
+    propagate: True
+
+    # don't propagate if these bits are also set for
+    # the same pixel
+    ignore_when_set: [
+        SUSPECT,
+        SSXTALK,
+        EDGEBLEED,
+        CRAY,
+        BADAMP,
+        BPM,
+    ]
 
 
-prop_sat_starpix: True
-flag_y1_stellarhalo_masked: True
+# throw out postage stamps for which the seg map of the
+# central object intersects a bright star mask
+flag_y1_stellarhalo_masked: False
+
+# if > 0, will add in estimate for intrinsic profile variance 
 intr_prof_var_fac: 0.0
 
+# note this should not be set explicitly to false for mof runs
+guess_from_nbrs: False
 
-max_pars:
-    method: 'lm'
-    ntry: 2
-
-    use_fracdev_grid: False
-    fracdev_range: [0.0,1.0]
-    TdByTe_range: [0.0,1.0e+12]
-    
-    lm_pars:
-        maxfev: 2000
-        xtol: 5.0e-5
-        ftol: 5.0e-5
-
+# do *not* do this in the main code, but in the neighbor
+# code
 reject_outliers: True
 
-make_corrected_meds: False
+# the input images have zero weight when lots of bits are set
+# Setting these will zero out more
+extra_mask_flag_list: [
+    TAPEBUMP,
+    NEAREDGE,
+    SATURATE,
+    INTERP,
+    #SUSPECT,
+]
 
-# we try to do most stuff for mof
-max_bmask_frac: 0.1
-max_zero_weight_frac: 0.1
+
+# don't bother with any images that have bad pixels or zero weight
+# pixels
+max_bmask_frac: 0.45
+max_zero_weight_frac: 0.45
 
 # don't need this since we are rejecting anything witha bad pixel
 replace_bad_pixels: False
@@ -84,7 +93,7 @@ replace_bad_pixels: False
 # no need for this, since we don't allow any bits set in mask
 symmetrize_bmask: False
 
-# not sure if we should do this one
+# don't need this since we are rejecting anything with zero weight
 symmetrize_weight: False
 
 # skip when either all weight or all image are zero
@@ -93,13 +102,13 @@ ignore_zero_weights_images: True
 
 # skip if central region is masked
 # this is a 4 pixel offset in each direction
-central_bmask_radius: 4
+# no need since we toss images with bad pixels
+#central_bmask_radius: 4
 
 #max_box_size: 48
 
-region: "mof"
-
-min_weight: 1.0e-4
+# subtracting neighbors, so use regular weight
+region: "cweight-nearest"
 
 # flagging
 #replacement_flags: "${DESDATA}/EXTRA/combined-image-flags/sva1_astrom_run1.0.1_stats_flagged_sheldon_psfv3_blacklists.json"
@@ -126,6 +135,19 @@ center_psf: False
 
 print_params: True
 
+max_pars:
+    method: 'lm'
+    ntry: 2
+    
+    lm_pars:
+        maxfev: 2000
+        xtol: 5.0e-5
+        ftol: 5.0e-5
+
+    use_fracdev_grid: False
+    fracdev_range: [0.0,1.0]
+    TdByTe_range: [0.0,1.0e+12]
+
 psf_pars:
     model: 'em3'
     ntry: 20
@@ -133,13 +155,14 @@ psf_pars:
       maxiter: 5000
       tol: 5.0e-6
 
+
+round_pars:
+    fitter_type: 'max'
+
 replace_cov: False
 cov_pars:
     m: 5
     h: 1.0e-3
-
-round_pars:
-    fitter_type: 'max'
 
 use_logpars: False
 model_pars:
@@ -160,7 +183,7 @@ model_pars:
             type: "dgauss"
             width: 0.27
 
-        # for now use stuff from great-des
+        # from fits on great-des
         fracdev:
             weights: [ 0.07219169,  0.03931063,  0.06144639,  0.02342249,  0.05680965,
                        0.07317471,  0.07112629,  0.05102051,  0.03397887,  0.06657475,
@@ -175,7 +198,9 @@ model_pars:
                       0.02094517,  0.0701313 ,  0.06071257,  0.05520489,  0.11392525,
                       0.14748899,  0.09209303,  0.02847802,  0.02259679,  0.03674909]
 
+
 do_shear: False
+
 
 # checkpoint times in minutes, needed for condor in case we pass a batch system
 # limit such as in the condor scavenge.
