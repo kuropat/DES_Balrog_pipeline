@@ -29,7 +29,9 @@ collate:
 
 
 fitter_type: "max-ngmix-boot"
+
 imageio_type: "meds-des-y3"
+
 
 fit_me_galaxy: True
 fit_coadd_galaxy: False
