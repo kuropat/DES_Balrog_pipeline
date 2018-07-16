@@ -1,6 +1,8 @@
+# TODO update run name
 run: "Y3A1-v4-shr"
 
-global_seed: 1687
+# TODO: update global seed
+global_seed: 93412
 
 
 # job setup
@@ -9,7 +11,7 @@ jobs:
     chunksize: 300
 
     # what to do
-    bands: ['r','i','z']
+    bands: [r,i,z]
 
 collate:
     # how to combine results
@@ -19,7 +21,13 @@ collate:
 
 # for now do regular fitting
 fitter_type: "metacal-ngmix-boot"
-imageio_type: "meds-des-y3"
+
+imageio:
+    io_type: "meds-des-y3"
+    image_type: "flux"
+
+    psfs:
+        type: "psfex"
 
 fit_me_galaxy: True
 fit_coadd_galaxy: False
@@ -32,7 +40,9 @@ read_me_wcs: False
 correct_meds:
     # this is only used by the megamixer to determine
     # file paths
-    mof_run: "Y3A1-v4-mof"
+
+    # TODO: put correct MOF run here
+    mof_run: "y3v02-mof-001"
 
     # set the weight to zero for outlier pixels
     # this happens before we replace bad pixels
@@ -42,6 +52,9 @@ correct_meds:
     # flagged with the below flags or have zero weight
     replace_bad:     True
 
+    # try to avoid some additive biases
+    symmetrize_mask: True
+
     # the code will replace pixels with these flags with
     # the model, as well as any zero weight pixels
     # we already zero weight for some flags, so only need
@@ -50,11 +63,20 @@ correct_meds:
     # the extractor code doesn't know the flag names,
     # so we put the numbers here
     bad_flags: [
+        1,     # BPM
         2,     # SATURATE
         4,     # INTERP
-        2048,  # SUSPECT
-        8192,  # NEAREDGE
-        16384, # TAPEBUMP
+        8,     # BADAMP
+        16,    # CRAY
+        32,    # STAR
+        64,    # TRAIL
+        128,   # EDGEBLEED
+        512,   # EDGE
+        1024,  # STREAK
+        2048,  # SUSPECT for y3 this includes TAPEBUMP
+        4096,  # FIXED
+        #8192,  # NEAREDGE not included for y3
+        #16384, # TAPEBUMP
     ]
 
 
@@ -95,8 +117,7 @@ max_zero_weight_frac: 0.10
 # doing this in corrector code
 replace_bad_pixels: False
 
-# zero weights for pixels at 90 degree rotation to existing
-# zero weight pixels
+# doing this stuff in the corrector
 symmetrize_weight: False
 
 # skip when either all weight or all image are zero
@@ -105,11 +126,14 @@ ignore_zero_weights_images: True
 # using uberseg even though we subtracted neighbors
 region: "uberseg"
 
-image_flags2check: 655343
+#use_psf_rerun: False
+# with piff we are currently always normalizing
+# in the wrapper
+normalize_psf: True
 
-use_psf_rerun: False
-normalize_psf: False
-center_psf: False
+# want this on for PSFEx and normal processing
+# piff currently only centers the psf
+center_psf: True
 
 print_params: True
 
@@ -124,9 +148,11 @@ max_pars:
 
 psf_pars:
     model: "gauss"
-    ntry: 5
+    ntry: 2
     fit_pars:
         maxfev: 2000
+        xtol: 5.0e-5
+        ftol: 5.0e-5
 
 round_pars:
     fitter_type: 'max'
@@ -157,7 +183,8 @@ model_pars:
             width: 0.27
 
 metacal_pars:
-    symmetrize_psf: True
+    #symmetrize_psf: True
+    psf: "gauss"
     types: ['noshear','1p','1m','2p','2m']
 
 # checkpoint times in minutes, needed for condor in case we pass a batch system
