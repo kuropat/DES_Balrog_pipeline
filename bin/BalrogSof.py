@@ -1,10 +1,9 @@
 #!/usr/bin/env python
-""" The program to run mcal (shear )  processing on moffiles
-  It suppose to be an extra step in mof production
-  It does not work on sof.
+""" The program to run Sof on the base files
+ meds
  
- By N. Kuropatkin  16/04/2018
- """
+ By N. Kuropatkin  05/03/2018
+"""
 import os
 import sys
 import math
@@ -22,21 +21,15 @@ import time
 import timeit
 from time import sleep
 import urllib2, ssl
-import easyaccess
-import cx_Oracle
-from Cython.Compiler.Naming import self_cname
-from pox import shutils
+
+
+
 import numpy
+from numpy.random.mtrand import seed
 import glob
 #
 from multiprocessing import Pool
-from Cython.Compiler.PyrexTypes import BuiltinObjectType
-from IcoImagePlugin import IcoImageFile
-from ImageMath import ops
-from pyparsing import line
-from scipy.weave.catalog import os_dependent_catalog_name
 from ngmixer import ngmixit_tools 
-
 try:
     from termcolor import colored
 except:
@@ -53,108 +46,95 @@ def makeSeedList(nchunks):
     for c in range(0,nchunks):
        seedlist.append(int(arrayV[c]*10000))
     return seedlist
-    
-" Method to run mads maker ----------- "        
-def makeMeds(inpar):
-    args = inpar[0]
-    band = inpar[1]
-    ra_cent = args['ra_cent']
-    dec_cent = args['dec_cent']
-    naxis1 = args['naxis1']
-    naxis2 = args['naxis2']
-    pixscale = args['pixscale']
-   
-    outpath = args['outpath']
-    logpath = args['logpath'] 
-    medsdir = args['medsdir']
-    medsconf = args['medsconf']
-    tilename = args['tilename']
-    confile = args['confile']
-    datadir = args['datadir']
-    restemp = outpath+'/'+tilename
-    logfile = logpath+'/'+tilename    
-    fname = datadir+'/lists/'+tilename+'_'+band+'_fileconf-'+medsconf+'.yaml'
-    with open(fname,'r') as fconf:
-        conf=yaml.load( fconf)
-        print "file conf \n"
-        print conf
-        objmap_url = datadir+'/lists/'+tilename+'_'+band+'_objmap-'+medsconf+'.fits'
-        seg_url = outpath+'/'+tilename+'_'+band+'_segmap.fits'
-        cimage_url = outpath+'/'+tilename+'_'+band+'.fits'
-        cat_url = outpath+'/'+tilename+'_'+band+'_cat.fits'
-        conf['coadd_object_map'] = objmap_url
-        conf['coadd_image_url'] = cimage_url
-        conf['coadd_cat_url'] = cat_url
-        conf['coadd_seg_url'] = seg_url
-        with open(fname, 'w') as conf_f:
-            yaml.dump(conf, conf_f) 
-        command = ['desmeds-make-meds-desdm',confile,fname]
-        print command
-        try:
-            subprocess.check_output(command)
-        except:
-            print "on meds for band %s \n" % band
-            
-            
-" The method to create one shr chunk to be run by pool "
 
+" The method to create one sof chunk to be run by pool "
 def makeChunk(inpar):
-    " create shr chunk  "
+    " create sof chunk  "
     args=inpar[0]
     cnum = inpar[1]
     tilename = args['tilename']
     mofdir = args['mofdir']
-    sheardir = args['sheardir']
     datadir = args['datadir']
-    nchunks = args['nchunks']
+    medslist = args['medslist'] #mofdir+'/meds_list.txt'
+    medsdir = args['medsdir'] #/data/des71.a/data/kuropat/meds_test/y3v02/DES0347-5540'
     psfmapF = args['psfmap'] #medsdir+'/DES0347-5540_all_psfmap.dat'
     mofconf =args['mofconf']
-    pardir = args['pardir']
-    moffile = tilename+'_'+pardir+'.fits'
-    medslist = datadir+'/'+pardir+'/meds_list.txt'
+    nchunks = args['nchunks']
     seedlist = args['seedlist']
-
+    
     listofmeds = []
-
     for line in open(medslist):
         medsF = line.split(' ')[0]
         listofmeds.append(medsF)
-    print listofmeds
     nfit = ngmixit_tools.find_number_meds(listofmeds[0])
 
     # Get the job bracketing
     j1,j2 = ngmixit_tools.getrange(int(cnum),nfit,nchunks)
     print "# Found %s nfit" % nfit
-    print "# will run chunk %s, between %s-%s jobs" % (nchunks,j1,j2)
+    print "# will run chunk %s, between %s-%s jobs" % (cnum,j1,j2)
+#    print seedlist
     seedN = seedlist[cnum-1]
-    mfile = datadir+'/'+pardir+'/'+moffile
-    outfile =  sheardir+'/'+tilename+'_shr-chunk-'+'%02d'%cnum +'.fits'
     print seedN
     print '\n'
-
+    outfile =  mofdir+'/'+tilename+'_sof-chunk-'+'%02d'%cnum +'.fits'
     command=['ngmixit', '--seed' ,'%d' %seedN, '--fof-range', '%d,%d'%(j1,j2)]
-    command+=['--mof-file', mfile,'--psf-map',psfmapF,mofconf,outfile]
-    for medsName in listofmeds:
-        command+=[medsName]
+    command += ['--nbrs-file',mofdir+'/'+tilename+'_nbrslist.fits']
+    command+=['--psf-map',psfmapF,mofconf,outfile]
+    for line in listofmeds:
+        medsN = line
+        command+=[medsN]
+
     print command
     print '\n'
     try:
         subprocess.check_output(command)
     except:
         print "failed to run ngmixit \n"
-       
+        
+            
+#" The method to create one sof chunk to be run by pool "
+#def makeChunk(inpar):
+#    " create sof chunk  "
+#    args=inpar[0]
+#    cnum = inpar[1]
+#    tilename = args['tilename']
+#    mofdir = args['mofdir']
+#    datadir = args['datadir']
+#    medslist = args['medslist'] #mofdir+'/meds_list.txt'
+#    medsdir = args['medsdir'] #/data/des71.a/data/kuropat/meds_test/y3v02/DES0347-5540'
+#    psfmapF = args['psfmap'] #medsdir+'/DES0347-5540_all_psfmap.dat'
+#    mofconf =args['mofconf']
+#    seedlist = args['seedlist']
+#    nchunks = args['nchunks']
+#    print seedlist
+#    seedN = seedlist[cnum-1]
+#    print seedN
+#    command = ['run_ngmixit','--nranges', '%d'%int(nchunks),  '--wrange', '1' ,'--tilename', tilename]
+#    command += ['--meds_list',medslist,'--bands','g,r,i,z']
+#    command += ['--psf-map', psfmapF]
+#    command += ['--nbrs-file',mofdir+'/'+tilename+'_nbrslist.fits']
+#    command += [mofconf,mofdir+'/'+tilename+'_sof-chunk-01.fits','--seed','%d' %seedN]
+#    command[4] = str(cnum)
+#    wrange=int(cnum)
+#    nranges=nchunks 
+#    command[16] = mofdir+'/'+tilename+'_sof-chunk-'+('%02d'%cnum)+'.fits' 
+#
+#    print command
+#    try:
+#        res=subprocess.check_output(command)
+#    except:
+#        print "failed to run run_ngmixit \n"
+#    print res   
 
-class BalrogPipelineShr():
+class BalrogSof():
     
-    def __init__(self, confile, tilename, mof_conf,pardir):
+    def __init__(self, confile, tilename, mof_conf):
         '''
         Constructor
         '''
-        urlbase = "https://desar2.cosmology.illinois.edu/DESFiles/"
         self.confile = confile
         self.workdir = os.getcwd()
         self.tilename = tilename
-        self.pardir = pardir
         self.conf = self.read_config(confile)
         self.dbname = self.conf['dbname']
         self.bands = self.conf['bands']
@@ -179,13 +159,17 @@ class BalrogPipelineShr():
         print " detection image : \n"
         print self.det
 
+#
+
         self.tiledir = self.medsdir+'/'+self.medsconf+'/'+self.tilename
-        self.mofdir = self.tiledir +'/shr'
+        self.mofdir = self.tiledir +'/sof'
         if not os.path.exists(self.mofdir):
             os.makedirs(self.mofdir)
         self.realDir = ''
         self.curdir = os.getcwd()
-
+#
+        self.outpath = os.path.join(self.medsdir,self.medsconf+'/'+self.tilename+'/coadd/')
+        self.logpath = shutil.abspath(self.outpath)+'/LOGS/'
 
     def getRealizations(self):
         self.realizationslist  = os.listdir(self.simData)
@@ -204,36 +188,9 @@ class BalrogPipelineShr():
         dict1['TILEINFO'] = self.tileinfo
         dict1['TILEDIR'] = self.tiledir
         dict1['MOFDIR'] = self.mofdir
-        dict1['MOFFILE'] = self.moffile
         
         return dict1     
 
-    """ establish connection to the database """
-    def connectDB(self):        
-        self.user = self.desconfig.get('db-' + self.dbname, 'user')
-        self.dbhost = self.desconfig.get('db-' + self.dbname, 'server')
-        self.port = self.desconfig.get('db-' + self.dbname, 'port')
-        self.password = self.desconfig.get('db-' + self.dbname, 'passwd')
-        kwargs = {'host': self.dbhost, 'port': self.port, 'service_name': self.dbname}
-        self.dsn = cx_Oracle.makedsn(**kwargs)
-        if not self.quiet: print('Connecting to DB ** %s ** ...' % self.dbname)
-        connected = False
-        
-        for tries in range(3):
-            try:
-                self.con = cx_Oracle.connect(self.user, self.password, dsn=self.dsn)
-                if self.autocommit: self.con.autocommit = True
-                connected = True
-                break
-            except Exception as e:
-                lasterr = str(e).strip()
-                print(colored("Error when trying to connect to database: %s" % lasterr, "red"))
-                print("\n   Retrying...\n")
-                sleep( 8 )
-        if not connected:
-            print('\n ** Could not successfully connect to DB. Try again later. Aborting. ** \n')
-            os._exit(0)
-        self.cur = self.con.cursor()
         
     def read_config(self,confile):
         """
@@ -253,22 +210,30 @@ class BalrogPipelineShr():
 
         return data
     
-    def get_tile_infor(self):
-        coadd_tile_table = 'COADDTILE_GEOM'
-        if self.dbname == 'desoper':
-            coadd_tile_table='COADDTILE_GEOM'
-        elif self.dbname == 'dessci':
-            coadd_tile_table='Y3A2_COADDTILE_GEOM'
-        query = QUERY_GEOM.format(tilename=self.tilename,coadd_tile_table=coadd_tile_table)
-        print query
-        self.cur.execute(query)
-        desc = [d[0] for d in self.cur.description]
-        # cols description
-        line = self.cur.fetchone()
-#        self.cur.close()
-        # Make a dictionary/header for all the columns from COADDTILE table
-        tileinfo = dict(zip(desc, line))
-        return tileinfo
+
+                    
+    " read catalog to find its length and create a fake objmap"
+    def make_fake_objmap(self,catfile,fname):
+        fitsio.read(catfile)
+        coadd_cat = fitsio.read(catfile, lower=True)
+        print "Creating objmap %s \n" % fname
+        # sort just in case, not needed ever AFIK
+        q = numpy.argsort(coadd_cat['number'])
+        coadd_cat = coadd_cat[q]
+        nobj = len(coadd_cat) 
+        print " Number of objects in the cat = %d \n" % nobj 
+        # now write some data
+        if os.path.exists(fname):
+            os.remove(fname)
+        fits = fitsio.FITS(fname,'rw')
+
+        data = numpy.zeros(nobj, dtype=[('object_number','i4'),('id','i8')])
+       
+        data['object_number'] = [num for num in range(nobj)]
+        data['id'] = [long(num) for num in range(nobj)]
+
+        print("writing objmap:",fname)
+        fitsio.write(fname, data, extname='OBJECTS',clobber=True)  
 
     def make_meds_list(self,datadir):
         mofdir = datadir + '/sof'
@@ -285,27 +250,13 @@ class BalrogPipelineShr():
             outF.write("%s %s \n" % (medsdic[bandN],bandN)) 
         outF.close()    
         return medsLF
-
-
-     
-    def make_psf_map(self,datadir):
-        psfmapF = datadir +'/'+self.tilename+'_all_psfmap.dat'
-        if os.path.exists(psfmapF):
-            os.remove(psfmapF)
-        listF = glob.glob(datadir+"/*psfmap*.dat")
-        outF = open(psfmapF,'w')
-        for fileN in listF:
-            for line in open(fileN,'r'):
-                outF.write(line)
-        outF.close()
-        return psfmapF
-
+    
     def makeChunkList(self,datadir):
-        mofdir = datadir + '/shr'
-        chunklistF = mofdir +'/'+self.tilename+'_shr-chunk.list'
+        mofdir = datadir + '/sof'
+        chunklistF = mofdir +'/'+self.tilename+'_sof-chunk.list'
         if os.path.exists(chunklistF):
             os.remove(chunklistF)
-        listF = glob.glob(mofdir+"/*shr-chunk*.fits")
+        listF = glob.glob(mofdir+"/*sof-chunk*.fits")
         outF = open(chunklistF,'w')
         for fileN in listF:
                 outF.write('%s \n' % fileN)
@@ -315,9 +266,9 @@ class BalrogPipelineShr():
 
     def collate_chunks(self,datadir):
         chunklistF = self.makeChunkList(datadir)
-        mofdir = datadir + '/shr'
-        command=['megamix-meds-collate-desdm','--noblind', 'shr-config/run-Y3A1-v001-mcal.yaml']
-        command += [chunklistF,mofdir+'/'+self.tilename+'_shr.fits']
+        mofdir = datadir + '/sof'
+        command=['megamix-meds-collate-desdm','--noblind', 'sof-config/run-Y3A1-v4-sof.yaml']
+        command += [chunklistF,mofdir+'/'+self.tilename+'_sof.fits']
         try:
             subprocess.check_output(command)
         except:
@@ -326,9 +277,9 @@ class BalrogPipelineShr():
 
     
     def getMofPars(self,datadir):
-        mofdir = datadir + '/shr'
+        mofdir = datadir + '/sof'
         psfmapF = datadir +'/'+self.tilename+'_all_psfmap.dat'
-        medslF = datadir+ '/'+ self.pardir +'/meds_list.txt'
+        medslF = mofdir+'/meds_list.txt'
 
         pars ={}
         pars['medsdir'] = self.medsdir
@@ -342,10 +293,11 @@ class BalrogPipelineShr():
         
     def make_nbrs_data(self,datadir):
         " First create mads list "
-        mofdir = datadir+'/shr'
+        mofdir = datadir+'/sof'
         if not os.path.exists(mofdir):
             os.makedirs(mofdir)
         medslist = self.make_meds_list(datadir)
+        
         " Now create psfmap for all bands "
         self.make_psf_map(datadir)
         "  Second run run_ngmixer-meds-make-nbrs-data for all bands "
@@ -388,7 +340,12 @@ class BalrogPipelineShr():
         if not os.path.exists(self.logpath):
             os.makedirs(self.logpath)
             
-
+    def makeIngection(self):
+        " At this point we need to include the image injection commands "
+        "                                                               "
+        "                                                               "     
+        " prepare information for the coadd tile "
+        
     def getCoaddPars(self,datadir):
         outpath = datadir+'/coadd/'
         logpath = outpath +'/LOGS/'
@@ -445,60 +402,35 @@ class BalrogPipelineShr():
             " Now crete meds for all bands "
             for band in self.bands:
                 self.makeMeds(band,realD)
-            
-            
+                
+    def CorrectPath(self,psfList,basedir):
+        outf = open("tempList",'w')
+        for line in open(psfList,'r'):
+            tokens = line.split(' ')
+            outline = tokens[0]
+            subtok = tokens[1].split(self.medsconf)
+            outline +=' '+self.medsdir + '/'+self.medsconf+'/'+subtok[1]
+            outf.write(outline)
+        outf.close()
+        shutil.move("tempList",psfList)           
     " Prepare data for meds run on simulated images "
     def prepInData(self):
+        " make list of psfmaps in base "
+        basedir = self.medsdir + '/'+self.medsconf+'/' + self.tilename
+        allPSFmapFiles = glob.glob(basedir+"/*_psfmap*.dat")
+        for psfLfile in allPSFmapFiles:
+            self.CorrectPath(psfLfile,self.medsdir + '/'+self.medsconf+'/')
         " make list of realizations "
         realizationslist = os.listdir(self.simData)
         " each realization contains tilename subrirectory "
         for realD in realizationslist:
-            " new meds dir is simData+/realisatiuon+ tilename"
+            " new meds  dir is simData+/realization+ tilename"
             self.realDir = os.path.abspath(self.simData+'/'+str(realD)+'/'+self.tilename)
-            print " realDir=%s \n" % self.realDir
-            " create subdirectories in the realization directory "
-            for band in self.bands:
-                nullw = self.realDir + '/nullwt-'+str(band)
-#                print "nullweights = %s \n" % nullw
-                if not os.path.exists(nullw):
-                    os.makedirs(nullw)
-            coaddir = self.realDir + '/coadd/'
-            if not os.path.exists(coaddir):
-                os.makedirs(coaddir)
-                os.makedirs(coaddir+'/lists')
-                os.makedirs(coaddir+'/LOGS')
-            listdir = self.realDir + '/lists'
-            if not os.path.exists(listdir):
-                os.makedirs(listdir)
-            " now copy common files "
-            psffiles = glob.glob(self.tiledir+'/*.dat')
-            for datF in psffiles:
-                dstF = datF.split('/')[-1] 
-                shutil.copyfile(datF, self.realDir+'/'+dstF)
-            " Copy list files "
-            listFiles = glob.glob(self.tiledir+'/lists/*')
-#            newLists = []
-            for listF in listFiles:
-                destF = listF.split('/')[-1]
-#                newLists.append(destF)
-                if listF.find('nullwt') > 0:
-                    self.changeList(listF,self.tiledir,self.realDir)
-                else:
-                    shutil.copyfile(listF, self.realDir+'/lists/'+destF)
- 
-            " now nullweight images are prepared in injection step "
-            for band in self.bands:
-                " We just need to copy and rename injected files in nullweight "
-                srcDir = self.realDir + '/'+str(band) + '/'
-                dstDir = self.realDir + '/nullwt-'+str(band) +'/'
-                flist = glob.glob(srcDir+'*')
-                for fileN in flist:
-                    realF = fileN.split('/'+band+'/')[1]
-                    dstFN = realF.split('balrog')[0]+'immasked_nullwt.fits'
-                    shutil.copyfile(fileN, dstDir+dstFN)
-                " Finally correct file config yaml "
-                self.YamlCorrect(band,self.realDir)
-            
+            " correct psf reference in psfmaps "
+            allPSFmapFiles = glob.glob(self.realDir+"/*_psfmap*.dat")
+            for psfLfile in allPSFmapFiles:
+                self.CorrectPath(psfLfile,self.realDir+'/')            
+
     def YamlCorrect(self,band,realDir):
         listDir = realDir+'/lists/'
         fileName = self.tilename+'_'+str(band)+'_fileconf-'+self.medsconf+'.yaml'
@@ -520,56 +452,8 @@ class BalrogPipelineShr():
         with open(fileList, 'w') as conf_f:
             yaml.dump(conf, conf_f) 
 # 
-    " The method to create one shr chunk  "
-    def makeChunk(self,inpar):
-        print " create shear chunk  \n"
-        args=inpar[0]
-        cnum = inpar[1]
-        print " input Cnum=%d\n" %cnum
-        tilename = args['tilename']
-        mofdir = args['mofdir']
-        sheardir = args['sheardir']
-        datadir = args['datadir']
-        nchunks = args['nchunks']
-        psfmapF = args['psfmap'] #medsdir+'/DES0347-5540_all_psfmap.dat'
-        mofconf =args['mofconf']
-        pardir = args['pardir']
-        moffile = tilename+'_'+pardir+'.fits'
-        medslist = datadir+'/'+pardir+'/meds_list.txt'
-        seedlist = args['seedlist']
+                
 
-        listofmeds = []
-
-        for line in open(medslist):
-            medsF = line.split(' ')[0]
-            listofmeds.append(medsF)
-        print listofmeds
-        nfit = ngmixit_tools.find_number_meds(listofmeds[0])
-
-    # Get the job bracketing
-        j1,j2 = ngmixit_tools.getrange(int(cnum),nfit,nchunks)
-        print "# Found %s nfit \n" % nfit
-        print "# will run chunk %s, between %s-%s jobs \n" % (cnum,j1,j2)
-        seedN = seedlist[cnum-1]
-        mfile = datadir+'/'+pardir+'/'+moffile
-        outfile =  sheardir+'/'+tilename+'_shr-chunk-'+'%02d'%int(cnum) +'.fits'
-        print seedN
-        print '\n'
-
-        command=['ngmixit', '--seed' ,'%d' %seedN, '--fof-range', '%d,%d'%(j1,j2)]
-        command+=['--mof-file', mfile,'--psf-map',psfmapF,mofconf,outfile]
-        for medsName in listofmeds:
-            command+=[medsName]
-        print " created command \n"
-        print command
-        print '\n'
-        res = ''
-        try:
-            res=subprocess.check_output(command)
-        except:
-            print "failed to run ngmixit \n"
-            print res          
-        print res
         
                 
     def changeList(self,listF,srcDir,realDir):
@@ -618,53 +502,68 @@ class BalrogPipelineShr():
         except:
             print "on meds for band %s \n" % band
               
+    def makeDetectionImage(self,outpathR):   
+        print " Images are created start with detection image \n"
+        "Now we have coadd images let's make detection one "
+        restemp = outpathR+'/'+self.tilename
+        ra_cent = self.tileinfo['RA_CENT']
+        dec_cent = self.tileinfo['DEC_CENT']
+        naxis1 = self.tileinfo['NAXIS1']
+        naxis2 = self.tileinfo['NAXIS2']
+        self.pixscale = self.tileinfo['PIXELSCALE']
 
+        (im_list,wt_list,msk_list) = self.create_det_list(restemp)
+
+        restemp =  outpathR+'/'+self.tilename
+        self.MakeDetImage(im_list,wt_list,msk_list,ra_cent,dec_cent,naxis1,naxis2,restemp) 
+        restemp = outpathR +'/'+self.tilename+'_det'
+
+        self.coadd_assemble(restemp)
     
-    " clean chunk file in the shr directory "    
+    " clean chunk file in the sof directory "    
     def cleanChunks(self,datadir):
-        chunklist = glob.glob(datadir+'/shr/*chunk*.fits')
+        chunklist = glob.glob(datadir+'/sof/*chunk*.fits')
         for chunkF in chunklist:
             os.remove(chunkF)   
 
-
+ 
+    def makeCatalog(self,band,outpath):
+        restemp = outpath+'/'+self.tilename
+        logfile = outpath+'/LOGS/'+self.tilename    
+        self.SEXcaller(restemp,band,logfile)
         
 if __name__ == "__main__":
     print sys.argv
     nbpar = len(sys.argv)
-    if nbpar < 5:
-        "Usage: BalrogPipelineShr.py <required inputs>"
+    if nbpar < 4:
+        "Usage: BalrogSof.py <required inputs>"
         print "  Required inputs:"
         print "  -c <confile> - configuration file"
         print " -t <tile> - tile name"
-        print " -m <shr conf file>"
-        print " -p <parent dir mof or sof >"
+        print " -m <sof conf file>"
 
         sys.exit(-2)
 
     try:
-        opts, args = getopt.getopt(sys.argv[1:],"hc:t:m:p:",["confile=","tilename","mofconfile","parentdir"])
+        opts, args = getopt.getopt(sys.argv[1:],"hc:t:m:",["confile=","tilename","mofconfile"])
     except getopt.GetoptError:
-        print "Usage:BalrogPipelineShr.py <required inputs>"
+        print "Usage:BalrogSof.py <required inputs>"
         print "  Required inputs:"
         print "  -c <confile> - configuration file"
         print " -t <tile> - tile name"
-        print " -m <shr conf file>"
-        print " -p <parent dir mof or sof >"
-        
+        print " -m <sof conf file>"
         sys.exit(2)
     c_flag = 0
     t_flag = 0
     m_flag = 0
-    p_flag = 0
     for opt,arg in opts:
         print "%s %s"%(opt,arg)
         if opt == "-h":
-            print "Usage:BalrogPipelineShr.py<required inputs>"
+            print "Usage:BalrogSof.py<required inputs>"
             print "  Required inputs:"
             print "  -c <confile> - configuration file"
             print " -t <tile> - tile name"
-            print " -m <shr conf file>"
-            print " -p <parent dir mof or sof >"
+            print " -m <sof conf file>"
             sys.exit(2)
            
         elif opt in ("-c","--confile"):
@@ -676,98 +575,77 @@ if __name__ == "__main__":
         elif opt in ("-m","--mofconfile"):
             m_flag = 1
             mofconf = arg
-        elif opt in ("-p","--pardir"):
-            p_flag = 1
-            pardir = arg    
-    sumF = c_flag + t_flag + m_flag + p_flag
-    if sumF != 4:
-        print "Usage:  BalrogPipelineShr.py <required inputs>"
+    sumF = c_flag + t_flag + m_flag
+    if sumF != 3:
+        print "Usage:  BalrogSof.py <required inputs>"
         print "  Required inputs:"
         print "  -c <confile> - configuration file"
         print " -t <tile> - tile name"
-        print " -m <shr conf file>"
-        print " -p <parent dir mof or sof >"
+        print " -m <sof conf file>"
         sys.exit(-2)
 
-    """ We start with the main line - create shear for original tile """
-    balP = BalrogPipelineShr(confile,tilename,mofconf,pardir)
-#    balP.prepMeds()
+    """ We start with the main line - create mads and sof for original tile """
+    balP = BalrogSof(confile,tilename,mofconf)
     datadir = balP.tiledir
-     
+    balP.prepInData() 
     saveS = True
     print "save seeds ",saveS
     print "\n"
+    
 
-    nchunks = 16
+    nchunks = 24
     seedlist = makeSeedList(nchunks)
-    if saveS:
-        with open('seedL1', 'wb') as fp:
-           pickle.dump(seedlist, fp)
-    else:
-        with open ('seedL1_base', 'rb') as fp:
-           seedlist = pickle.load(fp)
-    print " Seeds for base \n"
-    print seedlist
-    args =balP.getMofPars(datadir)
-    args['mofdir'] = datadir+'/' + pardir
-    args['sheardir'] = datadir+'/shr'
-    args['datadir'] = datadir
-    args['seedlist'] = seedlist
-    args['nchunks'] = nchunks
-    args['pardir'] = pardir
-    if not os.path.exists(datadir + '/shr'):
-        os.makedirs(datadir + '/shr')
-#    balP.make_nbrs_data(datadir)
+#    if saveS:
+#        with open('seedL1', 'wb') as fp:
+#           pickle.dump(seedlist, fp)
+#    else:
+#        with open ('seedL1_base', 'rb') as fp:
+#           seedlist = pickle.load(fp)
+#    print " Seeds for base \n"
+#    print seedlist
+#    args =balP.getMofPars(datadir)
+#    args['mofdir'] = datadir+'/sof'
+#    args['datadir'] = datadir
+#    args['seedlist'] = seedlist
+#    args['nchunks'] = nchunks
+    
 
-    pars = [(args, chunks) for chunks in range(1,nchunks+1) ]
-#    print pars
-#
-    pool = Pool(processes=nchunks)
 
-    pool.map(makeChunk, pars) 
-      
-    pool.close()
-    pool.join()
-#    for chunk in range(0,nchunks):
-#        balP.makeChunk(pars[chunk])
-    print " Finish producing chunks \n"
-    balP.collate_chunks(datadir)
-    balP.cleanChunks(datadir)
-
+    """ ---------------------------------------------------------"""
 
     reallist = balP.getRealizations()
     basedir = str(balP.medsdir)+'/' + str(balP.medsconf)
     for real in reallist:
         datadir = basedir+'/balrog_images/' + str(real)+'/'+balP.tilename
+        
 
+        
         seedlist = makeSeedList(nchunks)
         if saveS:
-             with open('seedL2', 'wb') as fp:
-                 pickle.dump(seedlist, fp)
+            with open('seedL2', 'wb') as fp:
+                pickle.dump(seedlist, fp)
         else:
-             with open ('seedL2_base', 'rb') as fp:
-                 seedlist = pickle.load(fp)
+            with open ('seedL2_base', 'rb') as fp:
+                seedlist = pickle.load(fp)
         print " Seeds for realization 0 \n"
         print seedlist
         args =balP.getMofPars(datadir)
-        args['mofdir'] = datadir+'/' + pardir
-        args['sheardir'] = datadir+'/shr'
+        args['mofdir'] = datadir+'/sof'
         args['datadir'] = datadir
         args['seedlist'] = seedlist
         args['nchunks'] = nchunks
-        args['pardir'] = pardir
+#
+    
+        balP.make_nbrs_data(datadir)
 
-        if not os.path.exists(datadir + '/shr'):
-            os.makedirs(datadir + '/shr')
         pars = [(args, chunks) for chunks in range(1,nchunks+1) ]
-#        print pars
+#
 #
         pool = Pool(processes=nchunks)
         pool.map(makeChunk, pars) 
-#        for chunk in range(0,nchunks):
-#            balP.makeChunk(pars[chunk])  
+           
         pool.close()
         pool.join()
-        print "Finish with realization %d chunks \n" % int(real)
+
         balP.collate_chunks(datadir)
         balP.cleanChunks(datadir)

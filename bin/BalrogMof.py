@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-""" The program to organize all steps necessary to produce
- meds and sof files for Balrog project
+""" The program to run Mof on the base files
+ meds
  
- By N. Kuropatkin  12/06/2017
+ By N. Kuropatkin  05/01/2018
  """
 import os
 import sys
@@ -21,16 +21,16 @@ import time
 import timeit
 from time import sleep
 import urllib2, ssl
-import easyaccess
-import cx_Oracle
 
-from pox import shutils
+#import cx_Oracle
+
 import numpy
 import glob
 #
 from multiprocessing import Pool
-
+from numpy.random.mtrand import seed
 from ngmixer import ngmixit_tools 
+
 
 try:
     from termcolor import colored
@@ -39,277 +39,18 @@ except:
         return line
 
 
-# The query template used to get the geometry of the tile
-QUERY_GEOM = """
-    SELECT ID, PIXELSCALE, NAXIS1, NAXIS2,
-        RA_CENT, DEC_CENT,
-        RA_SIZE,DEC_SIZE,
-        RAC1, RAC2, RAC3, RAC4,
-        DECC1, DECC2, DECC3, DECC4,
-        RACMIN,RACMAX,DECCMIN,DECCMAX,
-        CROSSRA0
-    FROM {coadd_tile_table}
-    WHERE tilename='{tilename}'
-"""
-
-""" The method to make coadded images for sextractor and meds"""
-def makeCoadd(inpar):
-    args = inpar[0]
-    band = inpar[1]
-    ra_cent = args['ra_cent']
-    dec_cent = args['dec_cent']
-    naxis1 = args['naxis1']
-    naxis2 = args['naxis2']
-    pixscale = args['pixscale']
-   
-    outpath = args['outpath']
-    logpath = args['logpath']
-    tilename = args['tilename']
-    print "Make coadd band=%s \n" % band
-    restemp = outpath+'/'+tilename+'_'+band
-    (images,weights,fluxes,masks) = create_swarp_lists(args,band)
-    SWARPcaller(images,weights,masks,fluxes,ra_cent,dec_cent,naxis1,naxis2,pixscale,restemp)
-
-#
-    coadd_assemble(tilename,restemp)     
-    return
-
-" -----------------  SWARP ----------------------- "
-def SWARPcaller(ilist,wlist,msklist,flist,ra_cent,dec_cent,naxis1,naxis2,pixscale,restemp):
-    imName = restemp +'_sci.fits'
-    weightName = restemp +'_wgt.fits'
-    maskName = restemp +'_msk.fits'
-    tmpImName = restemp +'_tmp_sci.fits'
-    print "imName=%s weightName=%s \n" % (imName,weightName)
-    tokens= ilist.split(',')
-    tokens1 = wlist.split(',')
-    tokens2 = flist.split(',')
-    print "input images %d weights %d scales %d \n" % (len(tokens),len(tokens1),len(tokens2))
-    print "images %s \n" % ilist
-    print "weights %s \n" % wlist
-    print "scales %s \n" % flist        
-    command = ['swarp',"@%s"%ilist]
-    command +=['-NTHREADS','1','-c',os.path.join('./','etc','Y3A1_v1_swarp.config')]
-        
-    command +=["-PIXEL_SCALE","%f" % pixscale]
-    command +=["-CENTER","%f,%f"%(ra_cent,dec_cent)]
-    command +=['-IMAGE_SIZE',"%d,%d"%(naxis1,naxis2)]
-    command +=["-BLANK_BADPIXELS","Y"]
-    command +=["-BLANK_BADPIXELS","Y"]
-    command +=["-DELETE_TMPFILES","Y"]
-    command +=["-COMBINE","Y","-COMBINE_TYPE","WEIGHTED"] 
-    command +=["-IMAGEOUT_NAME",imName]
-    command +=["-WEIGHTOUT_NAME",weightName]
-    command +=["-FSCALE_DEFAULT","@%s"%flist]
-    command +=["-WEIGHT_IMAGE","@%s"%wlist]
-    command +=["-COPY_KEYWORDS","BUNIT,TILENAME,TILEID"]
-
-    try:
-        subprocess.check_output(command)  
-    except subprocess.CalledProcessError as e:
-        print "error %s"% e
-    " Now make a mask image "        
-    command = ['swarp',"@%s"%ilist]
-    command +=['-NTHREADS','1','-c',os.path.join('./','etc','Y3A1_v1_swarp.config')]       
-    command +=["-PIXEL_SCALE","%f"%pixscale]
-    command +=["-CENTER","%f,%f"%(ra_cent,dec_cent)]
-    command +=['-IMAGE_SIZE',"%d,%d"%(naxis1,naxis2)]
-    command +=["-BLANK_BADPIXELS","Y"]
-    command +=["-BLANK_BADPIXELS","Y"]
-    command +=["-COMBINE_TYPE","WEIGHTED"]
-    command +=["-IMAGEOUT_NAME",tmpImName]
-    command +=["-WEIGHTOUT_NAME",maskName]
-    command +=["-FSCALE_DEFAULT","@%s"%flist]
-    command +=["-WEIGHT_IMAGE","@%s"%msklist]
-    command +=["-COPY_KEYWORDS","BUNIT,TILENAME,TILEID"]
-
-    try:
-        subprocess.check_output(command)  
-    except subprocess.CalledProcessError as e:
-        print "error %s"% e
-    if os.path.exists(tmpImName):
-        os.remove(tmpImName)
-
-" ---------- coadd assemble like in DESDM ---------- "
-def coadd_assemble(tilename,restemp):
-    imName = restemp +'_sci.fits'
-    weightName = restemp +'_wgt.fits'
-    maskName = restemp + '_msk.fits'
-    outName = restemp + '.fits'
-    commandN = ['./bin/coadd_assemble', '--sci_file', '%s'% imName,  '--wgt_file', '%s'% weightName ]
-    commandN +=[ '--msk_file', '%s' % maskName,  '--outname', '%s'% outName, '--xblock', '10',  '--yblock', '3' ]
-    commandN +=[ '--maxcols', '100',  '--mincols', '1',  '--no-keep_sci_zeros',  '--magzero', '30',  '--tilename', '%s'% tilename]
-    commandN +=[  '--interp_image', 'MSK',  '--ydilate', '3']
-    if string.find(restemp,'det') >0:
-        commandN = ['./bin/coadd_assemble', '--sci_file', '%s'% imName,  '--wgt_file', '%s'% weightName ]
-        commandN +=[ '--msk_file', '%s' % maskName, '--band','det', '--outname', '%s'% outName, '--xblock', '10',  '--yblock', '3' ]
-        commandN +=[ '--maxcols', '100',  '--mincols', '1',  '--no-keep_sci_zeros',  '--magzero', '30',  '--tilename', '%s'% tilename]
-        commandN +=[  '--interp_image', 'MSK',  '--ydilate', '3']
-    print commandN
-
-    try:
-        subprocess.check_output(commandN)  
-    except subprocess.CalledProcessError as e:
-        print "error %s"% e
-        
-""" -------- create list of files for SWARP 
-need to be modified after injection will be implemented  ------------ """
-def create_swarp_lists(args,band):
-
-    print " make swarp list band=%s \n" % band
-    medsdir = args['medsdir']
-    medsconf = args['medsconf']
-    tilename = args['tilename']
-    magbase = args['magbase']
-    outpath = args['outpath']
-    datadir = args['datadir']
-    outpathL = args['listpath']
-
-    flistP = str(datadir)+'/lists/'
-    filename = tilename+'_'+band+'_nullwt-flist-'+medsconf+'.dat'
-    flistF = flistP+filename
-
-    imext = "[0]"
-    mskext = "[1]"
-    wext = "[2]"
-    list_imF = outpathL+'/'+tilename+'_'+band+'_im.list'
-    list_wtF = outpathL+'/'+tilename+'_'+band+'_wt.list'
-    list_mskF = outpathL+'/'+tilename+'_'+band+'_msk.list'      
-    list_fscF = outpathL+'/'+tilename+'_'+band+'_fsc.list'
-    fim = open(list_imF,'w')
-    fwt = open(list_wtF,'w')
-    scf = open(list_fscF,'w')
-    mskf = open(list_mskF,'w')
-    first = True
-    for line in open(flistF,'r'):
-        fname = line.split()[0]
-        zerp = float(line.split()[1])
-        if first:
-            flxscale      = 10.0**(0.4*(magbase - zerp))
-            fim.write(str(fname+imext)+'\n')
-            fwt.write(str(fname+wext)+'\n')
-            mskf.write(str(fname+mskext)+'\n')
-            scf.write(str(flxscale)+'\n')
-            first = False
-        else:
-            flxscale      = 10.0**(0.4*(magbase - zerp))
-            fim.write(str(fname+imext)+'\n')
-            fwt.write(str(fname+wext)+'\n')
-            mskf.write(str(fname+mskext)+'\n')
-            scf.write(str(flxscale)+'\n')
-    fim.close()
-    fwt.close()
-    mskf.close()
-    scf.close()
-    return (list_imF,list_wtF,list_fscF,list_mskF)        
-
-" ---------------- run s-extractor to create objects catalog --------- "        
-def makeCatalog(inpar):
-#    BalP, band = args
-#    BalP.makeCatalog(band)
-    args = inpar[0]
-    band = inpar[1]
-    ra_cent = args['ra_cent']
-    dec_cent = args['dec_cent']
-    naxis1 = args['naxis1']
-    naxis2 = args['naxis2']
-    pixscale = args['pixscale']
-   
-    outpath = args['outpath']
-    logpath = args['logpath']
-    tilename = args['tilename']
-    restemp = outpath+'/'+tilename
-    logfile = logpath+'/'+tilename    
-    SEXcaller(restemp,band,logfile)
-    
-" -------------SEX ------------------- "    
-def SEXcaller(restemp,band,logtemp):
-        logFile = logtemp+'_'+band+'_sextractor.log'
-
-        flog = open(logFile,'w')
-        image = restemp+'_det.fits[0]'+','+restemp+'_'+band+'.fits[0]'
-        flagim = restemp+'_'+band+'.fits[1]'
-        weight = restemp+'_det.fits[2]'+','+restemp+'_'+band+'.fits[2]'
-        catName = restemp+'_'+band+'_cat.fits'
-        command=['sex',"%s"%image,'-c',os.path.join('./','etc','Y3A2_v2_sex.config')]
-        command+=['-WEIGHT_IMAGE',"%s"%weight]
-        command+=['-CATALOG_NAME',"%s"%catName]
-        command+=['-MAG_ZEROPOINT', '30', '-DEBLEND_MINCONT', '0.001', '-DETECT_THRESH', '1.1',  '-ANALYSIS_THRESH', '1.1']
-        command+=['-CHECKIMAGE_TYPE', 'SEGMENTATION', '-CHECKIMAGE_NAME', restemp+'_'+band+'_segmap.fits']
-        command+=['-FLAG_IMAGE', "%s"%flagim]
-#
-        command+=['-WEIGHT_TYPE','MAP_WEIGHT']
-        command+=['-PARAMETERS_NAME', os.path.join('./','etc','balrog_sex.param')]
-        command+=['-FILTER_NAME', os.path.join('./','etc','gauss_3.0_7x7.conv')]
-        
-           
-        print "command= %s \n" % command
-        try:
-
-            output,error = subprocess.Popen(command,stdout = subprocess.PIPE, stderr= subprocess.PIPE).communicate()
-
-        except subprocess.CalledProcessError as e:
-            print "error %s"% e
-        flog.write(output)
-        flog.write(error)    
-
-
-        flog.close()   
-
 """ create a list of random numbers to be used as seeds """
 def makeSeedList(nchunks):
     arrayV = numpy.random.rand(nchunks)
-#    print arrayV
     seedlist=[]
     for c in range(0,nchunks):
-       seedlist.append(int(arrayV[c]*10000))
+        seedlist.append(int(arrayV[c]*10000))
+        
     return seedlist
-    
-" Method to run mads maker ----------- "        
-def makeMeds(inpar):
-    args = inpar[0]
-    band = inpar[1]
-    ra_cent = args['ra_cent']
-    dec_cent = args['dec_cent']
-    naxis1 = args['naxis1']
-    naxis2 = args['naxis2']
-    pixscale = args['pixscale']
-   
-    outpath = args['outpath']
-    logpath = args['logpath'] 
-    medsdir = args['medsdir']
-    medsconf = args['medsconf']
-    tilename = args['tilename']
-    confile = args['confile']
-    datadir = args['datadir']
-    restemp = outpath+'/'+tilename
-    logfile = logpath+'/'+tilename    
-    fname = datadir+'/lists/'+tilename+'_'+band+'_fileconf-'+medsconf+'.yaml'
-    with open(fname,'r') as fconf:
-        conf=yaml.load( fconf)
-        print "file conf \n"
-        print conf
-        objmap_url = datadir+'/lists/'+tilename+'_'+band+'_objmap-'+medsconf+'.fits'
-        seg_url = outpath+'/'+tilename+'_'+band+'_segmap.fits'
-        cimage_url = outpath+'/'+tilename+'_'+band+'.fits'
-        cat_url = outpath+'/'+tilename+'_'+band+'_cat.fits'
-        conf['coadd_object_map'] = objmap_url
-        conf['coadd_image_url'] = cimage_url
-        conf['coadd_cat_url'] = cat_url
-        conf['coadd_seg_url'] = seg_url
-        with open(fname, 'w') as conf_f:
-            yaml.dump(conf, conf_f) 
-        command = ['desmeds-make-meds-desdm',confile,fname]
-        print command
-        try:
-            subprocess.check_output(command)
-        except:
-            print "on meds for band %s \n" % band
-            
-            
-" The method to create one sof chunk to be run by pool "
+        
+" The method to create one mof chunk to be run by pool "
 def makeChunk(inpar):
-    " create sof chunk  "
+    " create mof chunk - chunk numbers are from 1 to nchunks+1 "
     args=inpar[0]
     cnum = inpar[1]
     tilename = args['tilename']
@@ -321,40 +62,70 @@ def makeChunk(inpar):
     mofconf =args['mofconf']
     nchunks = args['nchunks']
     seedlist = args['seedlist']
-    
-    listofmeds = []
 
+    listofmeds = []
     for line in open(medslist):
         medsF = line.split(' ')[0]
         listofmeds.append(medsF)
-    print listofmeds
-    nfit = ngmixit_tools.find_number_meds(listofmeds[0])
-
+    foffile = mofdir+'/'+tilename+'_fofslist.fits'
+    nfit = ngmixit_tools.find_number_fof(foffile,ext=1)
+#
     # Get the job bracketing
-    j1,j2 = ngmixit_tools.getrange(int(cnum),nfit,nchunks)
-    print "# Found %s nfit" % nfit
+    j1,j2 = ngmixit_tools.getrange(int(cnum),nfit,int(nchunks))
+#
     print "# will run chunk %s, between %s-%s jobs" % (cnum,j1,j2)
 #    print seedlist
     seedN = seedlist[cnum-1]
     print seedN
     print '\n'
-    outfile =  mofdir+'/'+tilename+'_sof-chunk-'+'%02d'%cnum +'.fits'
+    outfile =  mofdir+'/'+tilename+'_mof-chunk-'+'%02d'%cnum +'.fits'
     command=['ngmixit', '--seed' ,'%d' %seedN, '--fof-range', '%d,%d'%(j1,j2)]
+    command+=['--fof-file',foffile]
     command += ['--nbrs-file',mofdir+'/'+tilename+'_nbrslist.fits']
     command+=['--psf-map',psfmapF,mofconf,outfile]
-    for medsName in listofmeds:
-        command+=[medsName]
+    for line in listofmeds:
+        medsN = line
+        command+=[medsN]
+
+
     print command
     print '\n'
     try:
         subprocess.check_output(command)
     except:
         print "failed to run ngmixit \n"
-        
-       
+    
 
+            
+#" The method to create one mof chunk to be run by pool "
+#def makeChunk(inpar):
+#    " create mof chunk chunk numbers are from 1 to nchunks+1 "
+#    args=inpar[0]
+#    cnum = inpar[1]
+#    tilename = args['tilename']
+#    mofdir = args['mofdir']
+#    datadir = args['datadir']
+#    medslist = args['medslist'] #mofdir+'/meds_list.txt'
+#    medsdir = args['medsdir'] #/data/des71.a/data/kuropat/meds_test/y3v02/DES0347-5540'
+#    psfmapF = args['psfmap'] #medsdir+'/DES0347-5540_all_psfmap.dat'
+#    mofconf =args['mofconf']
+#    seedlist = args['seedlist']
+#    nchunks = args['nchunks']
+#    seedN = seedlist[cnum-1]
+#    command = ['run_ngmixit','--nranges', '%d'%int(nchunks),  '--wrange', '1' ,'--tilename', tilename]
+#    command += ['--meds_list',medslist,'--bands','g,r,i,z','--fof-file', mofdir+'/'+tilename+'_fofslist.fits']
+#    command += ['--psf-map', psfmapF]
+#    command += ['--nbrs-file',mofdir+'/'+tilename+'_nbrslist.fits']
+#    command += [mofconf,mofdir+'/'+tilename+'_mof-chunk-01.fits','--seed','%d' %seedN]
+#    command[4] = str(cnum)
+#    command[18] = mofdir+'/'+tilename+'_mof-chunk-'+('%02d'%cnum)+'.fits'       
+#    try:
+#        res=subprocess.check_output(command)
+#    except:
+#        print "failed to run run_ngmixit \n"
+#    print res     
 
-class BalrogPipelineSof():
+class BalrogMof():
     
     def __init__(self, confile, tilename, mof_conf):
         '''
@@ -387,19 +158,14 @@ class BalrogPipelineSof():
         print self.bands
         print " detection image : \n"
         print self.det
-        desfile = os.getenv("DES_SERVICES")
-        if not desfile: desfile = os.path.join(os.getenv("HOME"), ".desservices.ini")
-#
-        self.desconfig = easyaccess.config_ea.get_desconfig(desfile, self.dbname)
-        self.connectDB()
-        self.tileinfo = self.get_tile_infor()
+
         self.tiledir = self.medsdir+'/'+self.medsconf+'/'+self.tilename
-        self.mofdir = self.tiledir +'/sof'
+        self.mofdir = self.tiledir +'/mof'
         if not os.path.exists(self.mofdir):
             os.makedirs(self.mofdir)
         self.realDir = ''
         self.curdir = os.getcwd()
-#
+#        self.realizationslist  = os.listdir(self.simData)
         self.outpath = os.path.join(self.medsdir,self.medsconf+'/'+self.tilename+'/coadd/')
         self.logpath = shutil.abspath(self.outpath)+'/LOGS/'
 
@@ -467,23 +233,7 @@ class BalrogPipelineSof():
 
 
         return data
-    
-    def get_tile_infor(self):
-        coadd_tile_table = 'COADDTILE_GEOM'
-        if self.dbname == 'desoper':
-            coadd_tile_table='COADDTILE_GEOM'
-        elif self.dbname == 'dessci':
-            coadd_tile_table='Y3A2_COADDTILE_GEOM'
-        query = QUERY_GEOM.format(tilename=self.tilename,coadd_tile_table=coadd_tile_table)
-        print query
-        self.cur.execute(query)
-        desc = [d[0] for d in self.cur.description]
-        # cols description
-        line = self.cur.fetchone()
-#        self.cur.close()
-        # Make a dictionary/header for all the columns from COADDTILE table
-        tileinfo = dict(zip(desc, line))
-        return tileinfo
+
 
     def create_swarp_lists(self,band,outpath,listpath):
 #        outpath = './coadd/'+self.tilename+'/lists/'
@@ -564,10 +314,9 @@ class BalrogPipelineSof():
         " Create coadd images for given band "
 
         restemp = outpath+'/'+self.tilename+'_'+band
-        (images,weights,fluxes,masks) = self.create_swarp_lists(band,outpath,listpath)
-        self.SWARPcaller(images,weights,masks,fluxes,ra_cent,dec_cent,naxis1,naxis2,restemp)
-
-#
+        (images,weights,masks,fluxes) = self.create_swarp_lists(band,outpath,listpath)
+        self.SWARPcaller(images,weights,fluxes,masks,ra_cent,dec_cent,naxis1,naxis2,restemp)
+#        byband[band] = (images,weights,fluxes)
         self.coadd_assemble(restemp)     
         
     """ call swarp to create a stamp if more than one ccd """
@@ -795,7 +544,6 @@ class BalrogPipelineSof():
         print("writing objmap:",fname)
         fitsio.write(fname, data, extname='OBJECTS',clobber=True)  
 
-
      
     def make_psf_map(self,datadir):
         psfmapF = datadir +'/'+self.tilename+'_all_psfmap.dat'
@@ -810,73 +558,29 @@ class BalrogPipelineSof():
         return psfmapF
 
     def makeChunkList(self,datadir):
-        mofdir = datadir + '/sof'
-        chunklistF = mofdir +'/'+self.tilename+'_sof-chunk.list'
+        mofdir = datadir + '/mof'
+        chunklistF = mofdir +'/'+self.tilename+'_mof-chunk.list'
         if os.path.exists(chunklistF):
             os.remove(chunklistF)
-        listF = glob.glob(mofdir+"/*sof-chunk*.fits")
+        listF = glob.glob(mofdir+"/*mof-chunk*.fits")
         outF = open(chunklistF,'w')
         for fileN in listF:
                 outF.write('%s \n' % fileN)
         outF.close()
         return chunklistF
-    
-    " The method to create one sof chunk to be run by pool "
-    def makeChunk(self,inpar):
-        " create sof chunk  "
-        args=inpar[0]
-        cnum = inpar[1]
-        tilename = args['tilename']
-        mofdir = args['mofdir']
-        datadir = args['datadir']
-        medslist = args['medslist'] #mofdir+'/meds_list.txt'
-        medsdir = args['medsdir'] #/data/des71.a/data/kuropat/meds_test/y3v02/DES0347-5540'
-        psfmapF = args['psfmap'] #medsdir+'/DES0347-5540_all_psfmap.dat'
-        mofconf =args['mofconf']
-        nchunks = args['nchunks']
-        seedlist = args['seedlist']
-    
-        listofmeds = []
-
-        for line in open(medslist):
-            medsF = line.split(' ')[0]
-            listofmeds.append(medsF)
-        print listofmeds
-        nfit = ngmixit_tools.find_number_meds(listofmeds[0])
-
-        # Get the job bracketing
-        j1,j2 = ngmixit_tools.getrange(int(cnum),nfit,nchunks)
-        print "# Found %s nfit" % nfit
-        print "# will run chunk %s, between %s-%s jobs" % (cnum,j1,j2)
-#    print seedlist
-        seedN = seedlist[cnum-1]
-        print seedN
-        print '\n'
-        outfile =  mofdir+'/'+tilename+'_sof-chunk-'+'%02d'%cnum +'.fits'
-        command=['ngmixit', '--seed' ,'%d' %seedN, '--fof-range', '%d,%d'%(j1,j2)]
-        command += ['--nbrs-file',mofdir+'/'+tilename+'_nbrslist.fits']
-        command+=['--psf-map',psfmapF,mofconf,outfile]
-        for medsName in listofmeds:
-            command+=[medsName]
-        print command
-        print '\n'
-        try:
-            subprocess.check_output(command)
-        except:
-            print "failed to run ngmixit \n"
+     
 
     def collate_chunks(self,datadir):
         chunklistF = self.makeChunkList(datadir)
-        mofdir = datadir + '/sof'
-        command=['megamix-meds-collate-desdm','--noblind', 'sof-config/run-Y3A1-v4-sof.yaml']
-        command += [chunklistF,mofdir+'/'+self.tilename+'_sof.fits']
+        mofdir = datadir + '/mof'
+        command=['megamix-meds-collate-desdm','--noblind', 'mof-config/run-Y3A1-v4-mof.yaml']
+        command += [chunklistF,mofdir+'/'+self.tilename+'_mof.fits']
         try:
             subprocess.check_output(command)
         except:
             print "failed to collate chunks \n"
-            
     def make_meds_list(self,datadir):
-        mofdir = datadir + '/sof'
+        mofdir = datadir + '/mof'
         medsLF = mofdir+'/meds_list.txt'
         outF = open(medsLF,'w')
         listF = glob.glob(datadir+"/*meds*.fits.fz")
@@ -889,12 +593,11 @@ class BalrogPipelineSof():
             bandN = str(band)
             outF.write("%s %s \n" % (medsdic[bandN],bandN)) 
         outF.close()    
-        return medsLF   
-             
+        return medsLF            
 
     
     def getMofPars(self,datadir):
-        mofdir = datadir + '/sof'
+        mofdir = datadir + '/mof'
         psfmapF = datadir +'/'+self.tilename+'_all_psfmap.dat'
         medslF = mofdir+'/meds_list.txt'
 
@@ -910,7 +613,7 @@ class BalrogPipelineSof():
         
     def make_nbrs_data(self,datadir):
         " First create mads list "
-        mofdir = datadir+'/sof'
+        mofdir = datadir+'/mof'
         if not os.path.exists(mofdir):
             os.makedirs(mofdir)
         medslist = self.make_meds_list(datadir)
@@ -937,7 +640,19 @@ class BalrogPipelineSof():
         outF.close()
         return psfmapF
         
+    def makeChunkList(self,datadir):
+        mofdir = datadir + '/mof'
+        chunklistF = mofdir +'/'+self.tilename+'_mof-chunk.list'
+        if os.path.exists(chunklistF):
+            os.remove(chunklistF)
+        listF = glob.glob(mofdir+"/*mof-chunk*.fits")
+        outF = open(chunklistF,'w')
+        for fileN in listF:
+                outF.write('%s \n' % fileN)
+        outF.close()
+        return chunklistF
     
+
                 
     " This is the sequence of command composing the pipeline "    
     def prepMeds(self):
@@ -1018,59 +733,37 @@ class BalrogPipelineSof():
             " Now crete meds for all bands "
             for band in self.bands:
                 self.makeMeds(band,realD)
-            
+                
+                
+    def CorrectPath(self,psfList,basedir):
+        outf = open("tempList",'w')
+        for line in open(psfList,'r'):
+            tokens = line.split(' ')
+            outline = tokens[0]
+            subtok = tokens[1].split(self.medsconf)
+            outline +=' '+self.medsdir + '/'+self.medsconf+'/'+subtok[1]
+            outf.write(outline)
+        outf.close()
+        shutil.move("tempList",psfList)
+                
             
     " Prepare data for meds run on simulated images "
     def prepInData(self):
+        " make list of psfmaps in base "
+        basedir = self.medsdir + '/'+self.medsconf+'/' + self.tilename
+        allPSFmapFiles = glob.glob(basedir+"/*_psfmap*.dat")
+        for psfLfile in allPSFmapFiles:
+            self.CorrectPath(psfLfile,self.medsdir + '/'+self.medsconf+'/')
         " make list of realizations "
         realizationslist = os.listdir(self.simData)
         " each realization contains tilename subrirectory "
         for realD in realizationslist:
-            " new meds dir is simData+/realization+ tilename"
+            " new meds  dir is simData+/realization+ tilename"
             self.realDir = os.path.abspath(self.simData+'/'+str(realD)+'/'+self.tilename)
-            print " realDir=%s \n" % self.realDir
-            " create subdirectories in the realization directory "
-            for band in self.bands:
-                nullw = self.realDir + '/nullwt-'+str(band)
-#                print "nullweights = %s \n" % nullw
-                if not os.path.exists(nullw):
-                    os.makedirs(nullw)
-            coaddir = self.realDir + '/coadd/'
-            if not os.path.exists(coaddir):
-                os.makedirs(coaddir)
-                os.makedirs(coaddir+'/lists')
-                os.makedirs(coaddir+'/LOGS')
-            listdir = self.realDir + '/lists'
-            if not os.path.exists(listdir):
-                os.makedirs(listdir)
-            " now copy common files "
-            psffiles = glob.glob(self.tiledir+'/*.dat')
-            for datF in psffiles:
-                dstF = datF.split('/')[-1] 
-                shutil.copyfile(datF, self.realDir+'/'+dstF)
-            " Copy list files "
-            listFiles = glob.glob(self.tiledir+'/lists/*')
-#            newLists = []
-            for listF in listFiles:
-                destF = listF.split('/')[-1]
-#                newLists.append(destF)
-                if listF.find('nullwt') > 0:
-                    self.changeList(listF,self.tiledir,self.realDir)
-                else:
-                    shutil.copyfile(listF, self.realDir+'/lists/'+destF)
- 
-            " now nullweight images are prepared in injection step "
-            for band in self.bands:
-                " We just need to copy and rename injected files in nullweight "
-                srcDir = self.realDir + '/'+str(band) + '/'
-                dstDir = self.realDir + '/nullwt-'+str(band) +'/'
-                flist = glob.glob(srcDir+'*')
-                for fileN in flist:
-                    realF = fileN.split('/'+band+'/')[1]
-                    dstFN = realF.split('balrog')[0]+'immasked_nullwt.fits'
-                    shutil.copyfile(fileN, dstDir+dstFN)
-                " Finally correct file config yaml "
-                self.YamlCorrect(band,self.realDir)
+            " correct psf reference in psfmaps "
+            allPSFmapFiles = glob.glob(self.realDir+"/*_psfmap*.dat")
+            for psfLfile in allPSFmapFiles:
+                self.CorrectPath(psfLfile,self.realDir+'/')
             
     def YamlCorrect(self,band,realDir):
         listDir = realDir+'/lists/'
@@ -1092,7 +785,7 @@ class BalrogPipelineSof():
         conf['meds_url'] = line
         with open(fileList, 'w') as conf_f:
             yaml.dump(conf, conf_f) 
-# 
+#        shutil.move(tempFile, fileList)
                 
 
         
@@ -1161,9 +854,9 @@ class BalrogPipelineSof():
 
         self.coadd_assemble(restemp)
     
-    " clean chunk file in the sof directory "    
+    " clean chunk file in the mof directory "    
     def cleanChunks(self,datadir):
-        chunklist = glob.glob(datadir+'/sof/*chunk*.fits')
+        chunklist = glob.glob(datadir+'/mof/*chunk*.fits')
         for chunkF in chunklist:
             os.remove(chunkF)   
 
@@ -1177,22 +870,22 @@ if __name__ == "__main__":
     print sys.argv
     nbpar = len(sys.argv)
     if nbpar < 4:
-        "Usage: BalrogPipelineSof.py <required inputs>"
+        "Usage: BalrogMof.py  <required inputs>"
         print "  Required inputs:"
         print "  -c <confile> - configuration file"
         print " -t <tile> - tile name"
-        print " -m <sof conf file>"
+        print " -m <mof conf file>"
 
         sys.exit(-2)
 
     try:
         opts, args = getopt.getopt(sys.argv[1:],"hc:t:m:",["confile=","tilename","mofconfile"])
     except getopt.GetoptError:
-        print "Usage:BalrogPipelineSof.py <required inputs>"
+        print "Usage: BalrogMof.py <required inputs>"
         print "  Required inputs:"
         print "  -c <confile> - configuration file"
         print " -t <tile> - tile name"
-        print " -m <sof conf file>"
+        print " -m <mof conf file>"
         sys.exit(2)
     c_flag = 0
     t_flag = 0
@@ -1200,11 +893,11 @@ if __name__ == "__main__":
     for opt,arg in opts:
         print "%s %s"%(opt,arg)
         if opt == "-h":
-            print "Usage:BalrogPipelineSof.py<required inputs>"
+            print "Usage:  BalrogMof.py <required inputs>"
             print "  Required inputs:"
             print "  -c <confile> - configuration file"
             print " -t <tile> - tile name"
-            print " -m <sof conf file>"
+            print " -m <mof conf file>"
             sys.exit(2)
            
         elif opt in ("-c","--confile"):
@@ -1218,161 +911,78 @@ if __name__ == "__main__":
             mofconf = arg
     sumF = c_flag + t_flag + m_flag
     if sumF != 3:
-        print "Usage:  BalrogPipelineSof.py <required inputs>"
+        print "Usage: BalrogMof.py <required inputs>"
         print "  Required inputs:"
         print "  -c <confile> - configuration file"
         print " -t <tile> - tile name"
-        print " -m <sof conf file>"
+        print " -m <mof conf file>"
         sys.exit(-2)
-    print " Start with Meds  \n"
-    """ We start with the main line - create mads and sof for original tile """
-    balP = BalrogPipelineSof(confile,tilename,mofconf)
-    balP.prepMeds()
-    datadir = balP.tiledir
-     
-    saveS = True
-    print "save seeds ",saveS
-    print "\n"
-    
 
-    ncpu = len(balP.bands)#
-#
-    args= balP.getCoaddPars(datadir)
-    pars = [(args, band) for band in balP.bands ]
-    print pars
-    
+    balP = BalrogMof(confile,tilename,mofconf)
 
-    pool = Pool(processes=ncpu)
-    pool.map(makeCoadd, pars) 
-    pool.close()
-    pool.join()
-    coaddir = datadir+'/coadd'
-#    print 'det image data dir = %s \n' % coaddir
-    balP.makeDetectionImage(coaddir)
-#
-    balP.cleanCoadds(coaddir)
-#    
-    pool = Pool(processes=ncpu)
-    pool.map(makeCatalog,pars)
-#    
-    balP.makeObjMaps(datadir)
-    pool.close()
-    pool.join()
-    pool = Pool(processes=ncpu)
-    pool.map(makeMeds,pars)
-#    
-    pool.close()
-    pool.join()
-    nchunks = 16
-    seedlist = makeSeedList(nchunks)
-    if saveS:
-    	with open('seedL1', 'wb') as fp:
-           pickle.dump(seedlist, fp)
-    else:
-        with open ('seedL1_base', 'rb') as fp:
-           seedlist = pickle.load(fp)
-    print " Seeds for base \n"
-    print seedlist
-    args =balP.getMofPars(datadir)
-    args['mofdir'] = datadir+'/sof'
-    args['datadir'] = datadir
-    args['seedlist'] = seedlist
-    args['nchunks'] = nchunks
-    
-    balP.make_nbrs_data(datadir)
-
-    pars = [(args, chunks) for chunks in range(1,nchunks+1) ]
-    print pars
-#
-    pool = Pool(processes=16)
-
-    pool.map(makeChunk, pars) 
-#        for chunk in range(0,nchunks):
-#            balP.makeChunk(pars[chunk])        
-    pool.close()
-    pool.join()
-
-    balP.collate_chunks(datadir)
-    balP.cleanChunks(datadir)
-
-    #
-    """ That's the place where star and galaxy injection should be inserted if we
-    will run them in per band mode. After injection if new source filew will be created
-    we need to make new file lists for coadd """
-    " Now do thins for each realization "
-    datadir = balP.tiledir
-    basedir = str(balP.medsdir)+'/' + str(balP.medsconf)
-    tilelistF = 'TileList.csv'
-    tilelistS = './TileList.csv'
-    outf=open(tilelistF,'w')
-    outf.write(tilename+'\n')
-    outf.close()
-    confFile = './Balrog-GalSim/config/bal_config.yaml'
-    geom_file = './Balrog-GalSim/inputs/Y3A2_COADDTILE_GEOM.fits'
-    config_dir = './Balrog-GalSim/config/'
-    psf_dir = datadir
-    tile_dir = basedir
-    config_file = 'bal_config.yaml'
-   
-    output_dir =  basedir
-    command = "./Balrog-GalSim/balrog/balrog_injection.py -l %s -g %s -t %s -c %s   -o %s -v %s " % (tilelistS,geom_file,tile_dir,config_dir,output_dir,config_file) 
-    
-    print command
-    retval=''
-    try:
-        retval = subprocess.call(command.split(),stderr=subprocess.STDOUT) 
-    except subprocess.CalledProcessError as e:
-        print "error %s"% e
-        print retval
-    print retval
-    """ ---------------------------------------------------------"""
+    datadir = balP.tiledir 
     balP.prepInData()
+    
+
+
+    nchunks=24
+    seedlist = makeSeedList(nchunks)
+    print " Used chunk seeds \n"
+    print seedlist
+    saveS=True
+    if saveS:
+        with open('seedL1', 'wb') as fp:
+            pickle.dump(seedlist, fp)
+    else:
+        with open ('seedL1', 'rb') as fp:
+            seedlist = pickle.load(fp)
+        
+#    args =balP.getMofPars(datadir)
+#    args['mofdir'] = datadir+'/mof'
+#    args['datadir'] = datadir
+#    args['seedlist'] = seedlist # list of seeds for all chunks
+#    args['nchunks'] = nchunks
+    
+#    balP.make_nbrs_data(datadir)
+
+#    pars = [(args, chunks) for chunks in range(1,nchunks+1) ]
+#        print pars
+#
+#    pool = Pool(processes=nchunks)
+#    pool.map(makeChunk, pars) 
+           
+#    pool.close()
+#    pool.join()
+
+#    balP.collate_chunks(datadir)
+#    balP.cleanChunks(datadir)
+
+
     reallist = balP.getRealizations()
     basedir = str(balP.medsdir)+'/' + str(balP.medsconf)
+    
     for real in reallist:
         datadir = basedir+'/balrog_images/' + str(real)+'/'+balP.tilename
         
-        ncpu = len(balP.bands)
-#
-        args= balP.getCoaddPars(datadir)
-        pars = [(args, band) for band in balP.bands ]
- 
-        pool = Pool(processes=ncpu)
-        pool.map(makeCoadd, pars) 
-        pool.close()
-        pool.join()
-#       
+#        ncpu = len(balP.bands)#
+
         coaddir = datadir+'/coadd'
-        balP.makeDetectionImage(coaddir)
-#
-        balP.cleanCoadds(coaddir)
-#    
-        pool = Pool(processes=ncpu)
-        pool.map(makeCatalog,pars)
-#    
-        balP.makeObjMaps(datadir)
-        pool.close()
-        pool.join()
-        pool = Pool(processes=ncpu)
-        pool.map(makeMeds,pars)
-#    
-        pool.close()
-        pool.join()
-        
+
         seedlist = makeSeedList(nchunks)
+        print " Used chunk seeds for realization \n"       
+        print seedlist
+
         if saveS:
             with open('seedL2', 'wb') as fp:
                 pickle.dump(seedlist, fp)
         else:
-            with open ('seedL2_base', 'rb') as fp:
+            with open ('seedL2', 'rb') as fp:
                 seedlist = pickle.load(fp)
-        print " Seeds for realization 0 \n"
-        print seedlist
         args =balP.getMofPars(datadir)
-        args['mofdir'] = datadir+'/sof'
+        args['mofdir'] = datadir+'/mof'
         args['datadir'] = datadir
-        args['nchunks'] = nchunks
         args['seedlist'] = seedlist
+        args['nchunks'] = nchunks
 #    bal.run()  
     
         balP.make_nbrs_data(datadir)
@@ -1380,7 +990,8 @@ if __name__ == "__main__":
         pars = [(args, chunks) for chunks in range(1,nchunks+1) ]
 #        print pars
 #
-        pool = Pool(processes=16)
+
+        pool = Pool(processes=nchunks)
         pool.map(makeChunk, pars) 
            
         pool.close()
