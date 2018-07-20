@@ -323,7 +323,7 @@ def makeChunk(inpar):
         medsF = line.split(' ')[0]
         listofmeds.append(medsF)
     print listofmeds
-    foffile = mofdir+'/'+tilename+'_fofslist.fits'
+    fof_file = mofdir+'/'+tilename+'_fofslist.fits'
     nfit = ngmixit_tools.find_number_fof(fof_file,ext=1)
 #
 
@@ -337,7 +337,7 @@ def makeChunk(inpar):
     print '\n'
     outfile =  mofdir+'/'+tilename+'_mof-chunk-'+'%02d'%cnum +'.fits'
     command=['ngmixit', '--seed' ,'%d' %seedN, '--fof-range', '%d,%d'%(j1,j2)]
-    command+=['--fof-file',foffile]
+    command+=['--fof-file',fof_file]
     command += ['--nbrs-file',mofdir+'/'+tilename+'_nbrslist.fits']
     command+=['--psf-map',psfmapF,mofconf,outfile]
     for medsName in listofmeds:
@@ -792,7 +792,7 @@ class BalrogPipelineMof():
         fitsio.write(fname, data, extname='OBJECTS',clobber=True)  
         
     def make_meds_list(self,datadir):
-        mofdir = datadir + '/sof'
+        mofdir = datadir + '/mof'
         medsLF = mofdir+'/meds_list.txt'
         outF = open(medsLF,'w')
         listF = glob.glob(datadir+"/*meds*.fits.fz")
@@ -1240,7 +1240,7 @@ if __name__ == "__main__":
 #
     args= balP.getCoaddPars(datadir)
     pars = [(args, band) for band in balP.bands ]
-#    print pars
+    print pars
     
 
     pool = Pool(processes=ncpu)
@@ -1248,7 +1248,7 @@ if __name__ == "__main__":
     pool.close()
     pool.join()
     coaddir = datadir+'/coadd'
-    print 'det image data dir = %s \n' % coaddir
+#    print 'det image data dir = %s \n' % coaddir
     balP.makeDetectionImage(coaddir)
 #
     balP.cleanCoadds(coaddir)
@@ -1264,6 +1264,7 @@ if __name__ == "__main__":
 #    
     pool.close()
     pool.join()
+    
     nchunks=16
     seedlist = makeSeedList(nchunks)
     print " Used chunk seeds \n"
@@ -1275,15 +1276,12 @@ if __name__ == "__main__":
     else:
         with open ('seedL1', 'rb') as fp:
             seedlist = pickle.load(fp)
-        
+    balP.make_nbrs_data(datadir)        
     args =balP.getMofPars(datadir)
     args['mofdir'] = datadir+'/mof'
     args['datadir'] = datadir
     args['nchunks'] = nchunks
     args['seedlist'] = seedlist # list of seeds for all chunks
- 
-    
-    balP.make_nbrs_data(datadir)
 
     pars = [(args, chunks) for chunks in range(1,nchunks+1) ]
 #        print pars
@@ -1370,6 +1368,7 @@ if __name__ == "__main__":
         else:
             with open ('seedL2', 'rb') as fp:
                 seedlist = pickle.load(fp)
+        balP.make_nbrs_data(datadir) 
         args =balP.getMofPars(datadir)
         args['mofdir'] = datadir+'/mof'
         args['datadir'] = datadir
@@ -1377,7 +1376,6 @@ if __name__ == "__main__":
         args['seedlist'] = seedlist
 #    bal.run()  
     
-        balP.make_nbrs_data(datadir)
 
         pars = [(args, chunks) for chunks in range(1,nchunks+1) ]
 #        print pars

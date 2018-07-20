@@ -1251,7 +1251,7 @@ if __name__ == "__main__":
     balP.makeDetectionImage(coaddir)
 #
     balP.cleanCoadds(coaddir)
-#    
+    
     pool = Pool(processes=ncpu)
     pool.map(makeCatalog,pars)
 #    
@@ -1273,13 +1273,14 @@ if __name__ == "__main__":
            seedlist = pickle.load(fp)
     print " Seeds for base \n"
     print seedlist
+    balP.make_nbrs_data(datadir)
     args =balP.getMofPars(datadir)
     args['mofdir'] = datadir+'/sof'
     args['datadir'] = datadir
     args['seedlist'] = seedlist
     args['nchunks'] = nchunks
     
-    balP.make_nbrs_data(datadir)
+#    balP.make_nbrs_data(datadir)
 
     pars = [(args, chunks) for chunks in range(1,nchunks+1) ]
     print pars
@@ -1367,16 +1368,14 @@ if __name__ == "__main__":
             with open ('seedL2_base', 'rb') as fp:
                 seedlist = pickle.load(fp)
         print " Seeds for realization 0 \n"
-        print seedlist
+        print seedlist 
+        balP.make_nbrs_data(datadir)
         args =balP.getMofPars(datadir)
         args['mofdir'] = datadir+'/sof'
         args['datadir'] = datadir
         args['nchunks'] = nchunks
         args['seedlist'] = seedlist
 #    bal.run()  
-    
-        balP.make_nbrs_data(datadir)
-
         pars = [(args, chunks) for chunks in range(1,nchunks+1) ]
 #        print pars
 #
