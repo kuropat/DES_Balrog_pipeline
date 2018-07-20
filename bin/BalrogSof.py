@@ -629,6 +629,7 @@ if __name__ == "__main__":
                 seedlist = pickle.load(fp)
         print " Seeds for realization 0 \n"
         print seedlist
+        balP.make_nbrs_data(datadir)
         args =balP.getMofPars(datadir)
         args['mofdir'] = datadir+'/sof'
         args['datadir'] = datadir
@@ -636,7 +637,7 @@ if __name__ == "__main__":
         args['nchunks'] = nchunks
 #
     
-        balP.make_nbrs_data(datadir)
+#        balP.make_nbrs_data(datadir)
 
         pars = [(args, chunks) for chunks in range(1,nchunks+1) ]
 #
