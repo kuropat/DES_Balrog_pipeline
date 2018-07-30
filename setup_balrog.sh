@@ -2,7 +2,6 @@
 medsdir=$1
 source /cvmfs/des.opensciencegrid.org/eeups/startupcachejob21i.sh
 setup galsim 1.5.1tmv # Brian's updated build
-setup easyaccess 1.2.0+2
 setup swarp 2.36.2+3
 setup mofpsfex 0.3.2
 setup psycopg2 2.4.6+7
@@ -19,16 +18,25 @@ setup despydb
 setup IntegrationUtils 2.0.9+1
 setup ngmix
 setup covmatrix 0.9.0+1 
-export PYTHONPATH=/data/des71.a/data/kuropat/Balrog-GalSim/balrog:${PYTHONPATH}
+setup cfitsio 3.370+0
+#setup cxOracle 5.1.2+13
+#setup oracleclient 11.2.0.3.0+4
+setup easyaccess
 #
 export BALROG_BASE=/data/des71.a/data/kuropat/balrog-base
+export PYTHONPATH=${BALROG_BASE}/Balrog-GalSim/balrog:${PYTHONPATH}
 #
-export PYTHONPATH=$PYTHONPATH:/data/des71.a/data/kuropat/balrog-base/lib/python2.7/site-packages/
+export PYTHONPATH=$PYTHONPATH:${BALROG_BASE}/lib/python2.7/site-packages/
 export DESMEDS_CONFIG_DIR=${BALROG_BASE}/desmeds-config/
 #
 export MEDS_DATA=/data/des71.a/data/kuropat/${medsdir}/
 export DESDATA=${BALROG_BASE}/DESDATA
 export PYTHONPATH=${BALROG_BASE}/mof/ngmixer/y3v0.9.4a+1/python:$PYTHONPATH
 export PATH=${BALROG_BASE}/mof/ngmixer/y3v0.9.4a+1/bin:$PATH
+#export PYTHONPATH=${BALROG_BASE}/mof/ngmixer/latest/python:$PYTHONPATH
+#export PATH=${BALROG_BASE}/mof/ngmixer/latest/bin:$PATH
+#
+#export PYTHONPATH=${BALROG_BASE}/mof/ngmixer/latest/python:$PYTHONPATH
+#export PATH=${BALROG_BASE}/mof/ngmixer/latest/bin:$PATH
 export PATH=${BALROG_BASE}/bin:$PATH
 export medsconf="y3v02"
