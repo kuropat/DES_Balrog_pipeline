@@ -1,0 +1,22 @@
+#!/bin/bash
+
+# Run: $chmod +x ms_matcher
+
+in1=$1
+in2=$2
+out_1and2=$3
+out_1not2=$4
+out_2not1=$5
+ra1=$6
+dec1=$7
+ra2=$8
+dec2=$9
+
+# Perform matches # 
+echo "Matching ..."
+echo " "
+/data/des30.a/data/kgrabow/stilts tmatch2 in1=${in1} ifmt1=fits in2=${in2} values1="${ra1} ${dec1}" values2="${ra2} ${dec2}" matcher=sky params=1.0 fixcols=all join=1and2 out=${out_1and2} ofmt=csv
+
+/data/des30.a/data/kgrabow/stilts tmatch2 in1=${in1} ifmt1=fits in2=${in2} values1="${ra1} ${dec1}" values2="${ra2} ${dec2}" matcher=sky params=1.0 fixcols=all join=1not2 out=${out_1not2} ofmt=csv
+
+/data/des30.a/data/kgrabow/stilts tmatch2 in1=${in1} ifmt1=fits in2=${in2} values1="${ra1} ${dec1}" values2="${ra2} ${dec2}" matcher=sky params=1.0 fixcols=all join=2not1 out=${out_2not1} ofmt=csv
