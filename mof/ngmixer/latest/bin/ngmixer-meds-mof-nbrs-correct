@@ -1,0 +1,370 @@
+#!/usr/bin/env python
+"""
+    %prog [options] ngmix_outputs data_file1 data_files2 ...
+    Subtract nbrs from the input meds file(s).
+
+    ngmix_outputs are the MOF outputs
+
+    data_file1 ... are the MEDS files
+"""
+from __future__ import print_function
+try:
+    xrange
+except:
+    xrange=range
+
+import os
+import sys
+import shutil
+import numpy
+
+import fitsio
+import meds
+from ngmixer import RenderNGmixNbrs
+from ngmixer.files import StagedOutFile
+
+import time
+
+from optparse import OptionParser
+parser = OptionParser(__doc__)
+
+parser.add_option("--work-dir", default='.',
+                  help=("location to copy files to for local processing. "
+                        "Also write to local files here and copy out."))
+
+parser.add_option("--output-file", default=None,
+                  help=("write output MEDS file to OUTPUT_FILE instead of into DESDATA."))
+
+parser.add_option("--object-range", default=None,
+                  help=("inclusive, sero-indexed range of objects to process "
+                        "(default: do all objects, example: --object-range=0,1)"))
+
+parser.add_option("--verbose", default=False, action='store_true',
+                  help=("be verbose"))
+
+parser.add_option("--fpack", action='store_true', help=("fpack the file"))
+
+parser.add_option("--replace-bad", action='store_true',
+                  help=("replace bad pixels with model of the central"))
+parser.add_option("--min-weight", default=-9999.0, help=("min weight to consider zero"))
+
+
+# fpacking
+FPACK_DIMS = [10240,1]
+
+# always assume cmodel
+MODEL = 'cm'
+
+class MyMeds(meds.MEDS):
+    """
+    meds file object that accepts a ref to an open fitsio FITS object
+
+    does not close the file if used in python context
+    """
+    def __init__(self,fits,filename=None):
+        self._filename = filename
+        self._fits = fits
+        self._cat = self._fits["object_data"][:]
+        self._image_info = self._fits["image_info"][:]
+        self._meta = self._fits["metadata"][:]
+
+    def close(self):
+        pass
+
+def _get_corr_fname(fname,work_dir,ngmix_run):
+    bname = os.path.basename(fname)
+    bname = bname.replace('.fits.fz','').replace('.fits','')
+    bname = '%s-mof-%s.fits' % (bname,ngmix_run)
+    newf = os.path.expandvars(os.path.join(work_dir, bname))
+    return newf
+
+def _get_corr_files(meds_files,work_dir,ngmix_run):
+    """
+    Local files will get cleaned up
+    """
+    start = 0
+    end = None
+
+    corr_files = []
+
+    for f in meds_files:
+        if end is None:
+            od = fitsio.read(f,extname='object_data')
+            end = len(od)-1
+            del od
+        newf = _get_corr_fname(f,work_dir,ngmix_run)
+        corr_files.append(newf)
+
+    return corr_files,start,end
+
+def _expand_path(path):
+    path=os.path.expandvars(path)
+    path=os.path.expanduser(path)
+    path=os.path.abspath(path)
+    return path
+
+def move_if_not_same(corr_file, output_file):
+
+    corr_file=_expand_path(corr_file)
+    output_file=_expand_path(output_file)
+
+    if corr_file != output_file:
+
+        odir=os.path.dirname(output_file)
+        if odir != '' and not os.path.exists(odir):
+            os.makedirs(odir)
+
+        # remove old file if needed
+        if os.path.exists(output_file):
+            print("removing existing file:",output_file)
+            try:
+                os.remove(output_file)
+            except:
+                raise ValueError("old nbrs corrected meds file '%s' "
+                                 "could not be removed!" % new_file)
+
+        # move to final location
+        print("moving %s -> %s" % (corr_file, output_file))
+        shutil.move(corr_file, output_file)
+
+    else:
+        print("no need to move file")
+
+
+def fpack_file(fname):
+    # build new file path
+    fzf = fname + '.fz'
+
+    cmd = 'fpack -t %d,%d {fname}' % tuple(FPACK_DIMS)
+    print("fpacking '%s' -> '%s'" % (fname,fzf))
+
+    cmd = cmd.format(fname=corr_file)
+
+    ret = os.system(cmd)
+    if ret != 0:
+        raise RuntimeError("failed to compress file")
+
+    return fzf
+
+def write_to_desdata(example_meds_file, corr_file, ngmix_run):
+    # compress fits file and write to final location
+
+    # get new meds dir
+    new_meds_dir = os.path.split(example_meds_file)[0].split('/')
+    new_meds_dir[-2] += '-mof-%s' % ngmix_run
+    new_meds_dir = '/'.join(new_meds_dir)
+    try:
+        os.makedirs(new_meds_dir)
+    except:
+        pass
+
+    bname=os.path.basename(corr_file)
+    new_file=os.path.join(new_meds_dir, bname)
+
+    move_if_not_same(corr_file, new_file)
+
+
+def get_ngmix_run(ngmix_output):
+    bname=os.path.basename(ngmix_output)
+
+    # use a dummy tile name to extract the run
+    ngmix_run = bname[len('DES0347-5540-'):-len('.fits')]
+
+    if 'blind' in ngmix_run:
+        raise ValueError('Blinded ngmix outputs cannot be used to correct for nbrs!')
+
+    return ngmix_run
+
+def check_options(options):
+    if options.output_file is None:
+        if options.object_range is not None:
+            print("object range cannot be used when writing to DESDATA!\n")
+            parser.print_help()
+            sys.exit(45)
+
+def read_ngmix_data(ngmix_output):
+    fit_data = fitsio.read(ngmix_output)
+    nbrs_data = fitsio.read(ngmix_output,ext='nbrs_data')
+
+    return fit_data, nbrs_data
+
+def get_renderer(ngmix_output):
+    fit_data, nbrs_data=read_ngmix_data(ngmix_output)
+
+    # build the renderer, set options
+    conf = {'unmodeled_nbrs_masking_type':'nbrs-seg'}
+    renderer = RenderNGmixNbrs(fit_data, nbrs_data, **conf)
+
+    return renderer
+
+def get_range(options):
+    if options.object_range is not None:
+        ostrs = options.object_range.strip().split(',')
+        if len(ostrs) != 2:
+            print("object range not given correctly!\n")
+            parser.print_help()
+            sys.exit(45)
+        mstart = int(ostrs[0])
+        mend = int(ostrs[1])
+        if mend < mstart:
+            print("object range must be increasing! (last "
+                  "object %d less than first object %d)\n" % (mend,mstart))
+            parser.print_help()
+            sys.exit(45)
+    return mstart, mend
+
+def get_band(corr_file, band_names):
+    # get the band for the file
+    band = -1
+    for band_name in band_names:
+        btest = '-%s-' % band_name
+        if btest in corr_file:
+            band = band_names.index(band_name)
+            break
+    if band == -1:
+        raise ValueError("Could not find band for file '%s'!" % corr_file)
+
+    return band
+
+if __name__ == '__main__':
+    options, args = parser.parse_args(sys.argv[1:])
+    if len(args) < 2:
+        parser.print_help()
+        sys.exit(45)
+
+    check_options(options)
+
+    min_weight=float(options.min_weight)
+
+    # read ngmix output MOF data
+    ngmix_output = args[0]
+    meds_files = args[1:]
+
+    renderer = get_renderer(ngmix_output)
+
+    ngmix_run=get_ngmix_run(ngmix_output)
+
+    band_names = ['g','r','i','z']
+
+    # get meds files
+    corr_files,mstart,mend = _get_corr_files(meds_files,options.work_dir,ngmix_run)
+
+    mstart, mend = get_range(options)
+
+    # correct each file
+    for corr_file,meds_file in zip(corr_files,meds_files):
+        print("correcting '%s' for nbrs..." % meds_file)
+
+        band=get_band(corr_file, band_names)
+
+        ex = meds.MEDSExtractor(
+            meds_file,
+            mstart,
+            mend,
+            corr_file,
+            cleanup=True,
+        )
+
+
+        # open the fitsio file and work
+        print("opening:",corr_file)
+        time.sleep(2)
+
+        # now overwrite each cutout in place. Open without clobber
+        with fitsio.FITS(corr_file,mode='rw') as fits:
+            # make into a meds file so we have that interface
+            mfile = MyMeds(fits)
+            cat = mfile.get_cat()
+
+            nobj=cat.size
+
+            # loop through objects and correct each
+            for mindex in xrange(cat['id'].size):
+
+                coadd_object_id=cat['id'][mindex]
+                ncutout=cat['ncutout'][mindex]
+                box_size=cat['box_size'][mindex]
+                start_row=cat['start_row'][mindex]
+
+                # print even if not verbose
+                print("%d/%d  %d" % (mindex+1, nobj,coadd_object_id))
+                if ncutout > 1 and box_size > 0:
+                    for cutout_index in xrange(1,ncutout):
+
+                        # get seg map
+                        try:
+                            seg = mfile.interpolate_coadd_seg(mindex, cutout_index)
+                        except:
+                            seg = mfile.get_cutout(mindex, cutout_index, type='seg')
+
+                        # get the masks and images
+                        if options.verbose:
+                            # if verbose, write for every object
+                            print('    doing nbrs for object at '
+                                  'index %d, cutout %d' % (mindex,cutout_index))
+
+                        res = renderer.render_nbrs(
+                            coadd_object_id,
+                            cutout_index,
+                            seg,
+                            MODEL,
+                            band,
+                            total=True,
+                            verbose=options.verbose,
+                        )
+                        if res is None:
+                            if options.verbose:
+                                print('        no nbrs')
+                            continue
+
+                        if options.verbose:
+                            print('        found nbrs - correcting images and weight maps')
+
+                        cen_img, nbrs_img, nbrs_mask, nbrs_ids, pixel_scale = res
+
+                        img   = mfile.get_cutout(mindex, cutout_index, type='image')
+                        wgt   = mfile.get_cutout(mindex, cutout_index, type='weight')
+                        bmask = mfile.get_cutout(mindex, cutout_index, type='bmask')
+
+                        # subtract neighbors
+                        img -= nbrs_img*pixel_scale*pixel_scale
+                        # possibly zero the weight
+                        wgt *= nbrs_mask
+
+                        # set masked or zero weight pixels to the value of the central.
+                        # For codes that use the weight, such as max like, this makes
+                        # no difference, but it may be important for codes that 
+                        # take moments or use FFTs
+                        if options.replace_bad:
+                            wbad=numpy.where( (bmask != 0) | (wgt < min_weight) )
+                            if wbad[0].size > 0:
+                                print("            setting",wbad[0].size,
+                                      "bad bmask/wt pixels to central model")
+                                img[wbad] = cen_img[wbad]
+
+                        # now overwrite pixels on disk
+                        fits['image_cutouts'].write(img.ravel(), start=[start_row[cutout_index]])
+                        fits['weight_cutouts'].write(wgt.ravel(), start=[start_row[cutout_index]])
+
+                        # note in the bad pixel mask where we have masked a neighbor
+                        # that failed to converge
+                        w=numpy.where(nbrs_mask != 1)
+                        if w[0].size > 0:
+                            print("            modifying",w[0].size,"bmask pixels")
+                            bmask[w] = 2**31-1
+                            fits['bmask_cutouts'].write(bmask.ravel(), start=[start_row[cutout_index]])
+                else:
+                    # we always want to see this
+                    print("    not writing ncutout:",ncutout,"box_size:",box_size)
+
+        if options.fpack:
+            corr_file=fpack_file(corr_file)
+
+        if options.output_file is None:
+            write_to_desdata(meds_files[0], corr_file, ngmix_run)
+        else:
+            move_if_not_same(corr_file, options.output_file)
+
+        del ex
+
+
