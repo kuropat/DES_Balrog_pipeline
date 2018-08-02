@@ -1,0 +1,102 @@
+#!/cvmfs/des.opensciencegrid.org/2015_Q2/eeups/SL6/eups/packages/Linux64/python/2.7.9+1/bin/python
+"""
+special collator for DESDM
+"""
+
+from __future__ import print_function
+import os
+
+import ngmixer
+from ngmixer.files import read_yaml
+
+from argparse import ArgumentParser
+from argparse import RawTextHelpFormatter
+parser = ArgumentParser(
+    description=__doc__,
+    formatter_class=RawTextHelpFormatter,
+)
+
+parser.add_argument('ngmix_config',help='config file path')
+parser.add_argument('file_list',help='list of files to collate')
+parser.add_argument('collated_file',help='path to the collated output file')
+
+
+parser.add_argument('--noblind',action='store_true',default=False,
+                  help="don't blind the catalog")
+
+parser.add_argument('--clobber',action='store_true',default=False,
+                  help="clobber existing catalog, else skip over")
+
+parser.add_argument('--skip-errors',action='store_true',default=False,
+                  help="skip over errors")
+
+class DESDMCollator(dict):
+    """
+    conf has ngmix config plus
+    """
+    def __init__(self, ngmix_config, flist_file, collated_file,
+                 blind=True,
+                 skip_errors=False,
+                 clobber=False):
+
+        self.ngmix_config = os.path.abspath( ngmix_config )
+        self.flist_file=flist_file
+        self.collated_file=collated_file
+
+        self.blind=blind
+        self.skip_errors=skip_errors
+        self.clobber=clobber
+
+        self._load_config()
+        self._load_flist()
+
+    def collate(self):
+        """
+        concatenate all the chunk files, adding in
+        some calculated information such as mags
+        """
+
+        cls = ngmixer.megamixer.concat_io.get_concat_class(
+            self.conf['collate']['concat_type'],
+        )
+
+        concatter = cls(
+            self.ngmix_config,
+            self.flist,
+            self.collated_file,
+            bands=self.conf['jobs']['bands'],
+            blind=self.blind,
+            clobber=self.clobber,
+            skip_errors=self.skip_errors,
+        )
+
+        concatter.concat()
+
+    def _load_flist(self):
+        with open(self.flist_file) as fobj:
+            flist = [l.strip() for l in fobj]
+
+        self.flist=flist
+
+    def _load_config(self):
+        self.conf = read_yaml(self.ngmix_config)
+
+
+def main():
+
+    args = parser.parse_args()
+
+    blind = not args.noblind
+
+    collator = DESDMCollator(
+        args.ngmix_config,
+        args.file_list,
+        args.collated_file,
+        blind=blind,
+    )
+
+    collator.collate()
+
+
+if __name__ == '__main__':
+    main()
