@@ -13,20 +13,20 @@ BalrogBase.py
 
 # The code provides a baseline for Balrog production
 Implemented steps:
-Block 1:
+#Block 1:
    Query DESDM database for a tile configuration.    
    Run meds_prep to copy all necessary files from DESDM to $MEDS_DATA directory
-Block 2:
+#Block 2:
    Create coadded images and catalogs from files downloaded by Block 1
-Block 3:
+#Block 3:
    Run desmeds to create meds files on input images
-Block 4:
+#Block 4:
    Generate images with injected objects in
    <meds_data>/<medsconf>/balrog_images/<realisation>/<medsconf>/<tilename> 
-   prepare configurations, filelists and images in each realisation subdirectory to ru the rest of the pipeline.
-Block 5:
+   prepare configurations, filelists and images in each realisation subdirectory   
+#Block 5:
    Create coadded images and catalogs for ech realization.
-Block 6:
+#Block 6:
    Run desmeds to create meds files for each realization
 
 Input parameters:
@@ -43,7 +43,7 @@ RunBase.sh - an example how to create environment and run the BalrogBase.py
            input: <meds base> derectory where data will be;
                    <tilename>
                    <mode> positional code 1 -prep only; 2 - coadd and catalog 
-	                4 - meds for base; 8 - injection; 16 - coadd and catalog for injected; 
+	                4 - meds for base; 8 - injection; 16 - coadd and catalog                         for injected images; 
 	                32 - meds for injected; 63 - all together
                    <ncpu> - number of CPUs to be used by GalSim, by defauld the progrm will use
                             ncpu equal the number of bands
@@ -54,11 +54,13 @@ RunBase.sh - an example how to create environment and run the BalrogBase.py
        To create coadded images and catalogs the program is using configuration
        files found in etc/ subdirectory
 
-       To run GalSim simulation the program requares the  config_template_COSMOS.yaml
+       To run GalSim simulation the program requares the
+                       config_template_COSMOS.yaml
        file be copied to Balrog-GalSim/config/ subdirectory. And example of the
        file is included in the repository.
 
        In general the base directory structure should look like following:
+       
 drwxr-xr-x 7 kuropat sdss     155 Aug 10 13:37 Balrog-GalSim
 drwxr-xr-x 4 kuropat sdss      41 Aug  6 14:08 balrogutils
 drwxr-xr-x 3 kuropat sdss      24 Aug  3 10:49 DESDATA
@@ -71,7 +73,7 @@ drwxr-xr-x 2 kuropat sdss     115 Aug  3 10:50 shr-config
 drwxr-xr-x 2 kuropat sdss     138 Aug  3 14:25 sof-config
 
 
-BalrogSofMegamixer.py 
+#BalrogSofMegamixer.py 
       The program to create sof files for given data set.
       Usage: BalrogSofMegamixer.py  <required inputs>
         Required inputs:
@@ -92,24 +94,26 @@ BalrogSofMegamixer.py
         Results will be put in ${NGMIXER_OUTPUT_DIR}/y3v02-sof/ directory
 
 
-RunSof.sh 
+#RunSof.sh 
         An example script how to create environment and run
         BalrogSofMegamixer.py
         input: <meds base> derectory where data will be. It is place where 
                                <medsconf>/<tilename> subdirectories are;
                    <tilename>;
-                   <mof configfuration file> - like sof-config/run-y3v02-sof.yaml
+                   <mof configfuration file> - like
+		     sof-config/run-y3v02-sof.yaml
                    <ncpu> -number of CPUs to use
 
-BalrogMofMegamixer.py 
+#BalrogMofMegamixer.py 
          A program to create mof using Sheldon's megamixer.
          Input parameters are the same as in BalrogSofMegamixer.py
 
-RunMof.sh 
+#RunMof.sh 
         An example script how to create environment and run
         BalrogMofMegamixer.py
         input: <meds base> derectory where data will be. It is place where 
                                <medsconf>/<tilename> subdirectories are;
                    <tilename>;
-                   <mof configfuration file> - like mof-config/run-y3v02-mof.yaml
+                   <mof configfuration file> - like  
+		       mof-config/run-y3v02-mof.yaml
                    <ncpu> -number of CPUs to use
