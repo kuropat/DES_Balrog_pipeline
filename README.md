@@ -63,7 +63,6 @@ An example how to create environment and run the BalrogBase.py
        <meds base> derectory where data will be
        <tilename>
        <mode> positional code:
--
              1 prep only 
              2 coadd and catalog 
              4 meds for base
