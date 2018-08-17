@@ -1,0 +1,92 @@
+#!/usr/bin/env python
+"""
+Create a MEDS file, downloading data and
+making input files if needed
+"""
+from __future__ import print_function
+import sys
+import os
+import desmeds
+
+
+from argparse import ArgumentParser
+parser=ArgumentParser()
+
+parser.add_argument(
+    'medsconf',
+    help='meds configuration file',
+)
+parser.add_argument(
+    'tilename',
+    help='tilename to download',
+)
+parser.add_argument(
+    'band',
+    default=None,
+    help='band to download',
+)
+
+parser.add_argument(
+    '--tmpdir',
+    default=None,
+    help=('use the specified temporary directory for writing'),
+)
+
+
+parser.add_argument(
+    '--noprep',
+    action='store_true',
+    help=("don't run the preparation code, which downloads all "
+          "relevant data and makes null weight files"),
+)
+parser.add_argument(
+    '--noclean',
+    action='store_true',
+    help=('just remove all the generated nullwt files and exit'),
+)
+parser.add_argument(
+    '--preclean',
+    action='store_true',
+    help=('clean before running, useful in case files got corrupted'),
+)
+
+
+
+
+def main():
+
+    args = parser.parse_args()
+
+    prep=desmeds.desdm_maker.Preparator(
+        args.medsconf,
+        args.tilename,
+        args.band,
+    )
+
+
+    try:
+
+        if args.preclean:
+            prep.clean()
+
+        if not args.noprep:
+            prep.go()
+
+        conf=desmeds.files.read_meds_config(args.medsconf)
+        fileconf=desmeds.files.get_desdm_file_config(
+            conf['medsconf'],
+            args.tilename,
+            args.band,
+        )
+        maker = desmeds.DESMEDSMakerDESDM(
+            conf,
+            fileconf,
+            tmpdir=args.tmpdir,
+        )
+        maker.go()
+    finally:
+        if not args.noclean:
+            prep.clean()
+
+if __name__ == '__main__':
+    main()

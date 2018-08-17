@@ -1,0 +1,43 @@
+#!/usr/bin/env python
+"""
+    %prog [options] medsconf coadd_run band
+
+Generate the inputs and batch scripts for the specified coadd run and band
+"""
+from __future__ import print_function
+import sys
+import os
+import desmeds
+
+from argparse import ArgumentParser
+parser=ArgumentParser()
+
+parser.add_argument('medsconf',help='DES MEDS configuration identifier')
+parser.add_argument('tilename',help='DES tilename')
+parser.add_argument('band',help='bandpass')
+
+parser.add_argument('--system', default="lsf",
+                    help="batch system")
+
+parser.add_argument('--extra',
+                    help="extra commands for wq scripts")
+parser.add_argument('--missing',
+                    action='store_true',
+                    help="only write scripts for missing files")
+
+
+def main():
+    args=parser.parse_args()
+
+    generator = desmeds.batch.Generator(
+        args.medsconf,
+        args.tilename,
+        args.band,
+        extra=args.extra,
+        system=args.system,
+        missing=args.missing,
+    )
+    generator.write()
+
+main()
+

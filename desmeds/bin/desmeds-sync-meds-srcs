@@ -1,0 +1,82 @@
+#!/usr/bin/env python
+"""
+    %prog [options] coadd_run band
+    download sources for MEDS file"""
+import os
+import sys
+import meds
+import numpy as np
+import glob
+import desdb
+import subprocess
+import tempfile
+
+from optparse import OptionParser
+parser = OptionParser(__doc__)
+
+if __name__ == '__main__':
+    # options
+    options, args = parser.parse_args(sys.argv[1:])
+    if len(args) < 2:
+        parser.print_help()
+        sys.exit(45)
+
+    coadd_run = args[0]
+    band = args[1]
+    
+    # get coadd conn and sources
+    conn = desdb.Connection()
+    cf = desdb.files.Coadd(coadd_run=coadd_run,band=band,conn=conn)
+    cf.load(srclist=True)
+    srclist = cf.srclist
+    DESDATA = os.environ['DESDATA']
+
+    # first collect files
+    fnames = []
+
+    # helper function
+    def _add_to_fnames(dst):
+        fnames.append(os.path.expandvars(dst.replace(DESDATA,'${DESREMOTE}')))
+
+    # coadd
+    _add_to_fnames(cf['image_url'])
+    seg_url = cf['image_url'].replace('/%s/coadd/' % coadd_run,'/%s/QA/segmap/' % coadd_run).replace('.fits.fz','_seg.fits.fz')
+    _add_to_fnames(seg_url)
+    cat_url = cf['image_url'].replace('.fits.fz','_cat.fits')
+    _add_to_fnames(cat_url)
+    psf_url = cf['image_url'].replace('.fits.fz','_psfcat.psf')
+    _add_to_fnames(psf_url)
+
+    # SE images
+    for s in srclist:
+        _add_to_fnames(s['red_image'].replace('.fits.fz','_psfcat.psf'))
+        _add_to_fnames(s['red_image'])
+        _add_to_fnames(s['red_bkg'])
+        _add_to_fnames(s['red_seg'])
+
+        if 'astro_refine' in s:
+            _add_to_fnames(s['astro_refine'])
+    
+    # write to temp file
+    fd,tfile = tempfile.mkstemp()
+    os.close(fd)
+    try:
+        with open(tfile,'w') as fp:
+            for ff in fnames:
+                fp.write(ff+'\n')
+
+        # download
+        cmd ='wget -x --input-file=%s -nH --cut-dirs=2 --directory-prefix=${DESDATA} --timestamping'
+        rcmd = cmd % tfile
+        err = subprocess.check_call(rcmd,shell=True)
+    except:
+        raise
+    finally:
+        # remove the temp file
+        try:
+            os.remove(tfile)
+        except:
+            pass
+
+
+

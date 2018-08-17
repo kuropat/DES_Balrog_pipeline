@@ -1,0 +1,37 @@
+#!/usr/bin/env python
+"""
+Generate a meds file from the specified configuration and
+file set
+
+Unlike desmeds-make-meds, does not download any data
+or create null weight files
+"""
+from __future__ import print_function
+import sys
+import os
+import desmeds
+
+from argparse import ArgumentParser
+parser=ArgumentParser()
+
+parser.add_argument(
+    'medsconf',
+    help='DES MEDS configuration identifier',
+)
+parser.add_argument(
+    'fileconf',
+    help='json file holding file information',
+)
+
+
+def main():
+    args=parser.parse_args()
+
+    maker = desmeds.DESMEDSMakerDESDM(
+        args.medsconf,
+        args.fileconf,
+    )
+    maker.go()
+
+main()
+

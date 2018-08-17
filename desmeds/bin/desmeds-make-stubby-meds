@@ -1,0 +1,31 @@
+#!/usr/bin/env python
+"""
+    %prog [options] medsconf coadd_run band
+
+Generate the stubby meds, which holds the input data for the MEDSMaker
+"""
+from __future__ import print_function
+import sys
+import os
+import desmeds
+
+
+from argparse import ArgumentParser
+parser=ArgumentParser()
+
+parser.add_argument('medsconf',help='DES MEDS configuration identifier')
+parser.add_argument('coadd_run',help='DES coadd run identifier (pre y2)')
+parser.add_argument('band',help='bandpass')
+
+def main():
+    args=parser.parse_args()
+
+    maker = desmeds.DESMEDSMaker(args.medsconf,
+                                 args.coadd_run,
+                                 args.band,
+                                 do_inputs=True,
+                                 do_meds=False)
+    maker.go()
+
+main()
+
