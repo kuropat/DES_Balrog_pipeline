@@ -1,6 +1,6 @@
 # DES_Balrog_pipeline
 ## Based on Erin Sheldon meds and mof and megamixer packages
-#### Modifyed and repacked version. Version 2.0
+#### Modified and repacked version. Version 2.0
   
 
 ###### code specific to des Balrog production is located in __balrogutils__ directory.
