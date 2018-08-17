@@ -3,45 +3,46 @@
 #### Modifyed and repacked version. Version 2.0
   
 
-** code specific to des Balrog production is located in
-"balrogutils" directory.**
-The directory contains bin/ and python/ subdirectories.
+###### code specific to des Balrog production is located in **balrogutils** directory.
+
+The directory contains `bin` and `python` subdirectories.
 
 Executable modules are:
 
-**BalrogBase.py**
+######BalrogBase.py
 
  The code provides a baseline for Balrog production
+
 Implemented steps:
 
-**Block 1: **
+######Block 1: 
 
    Query DESDM database for a tile configuration.    
    Run meds_prep to copy all necessary files from DESDM to $MEDS_DATA directory
 
-**Block 2: **
+######Block 2: 
 
    Create coadded images and catalogs from files downloaded by Block 1
 
-**Block 3: **
+######Block 3: 
 
    Run desmeds to create meds files on input images
 
-**Block 4: **
+######Block 4: 
 
    Generate images with injected objects in
    `<meds_data>/<medsconf>/balrog_images/<realisation>/<medsconf>/<tilename>` 
    prepare configurations, filelists and images in each realisation subdirectory   
 
-**Block 5: **
+######Block 5: 
 
    Create coadded images and catalogs for ech realization.
 
-**Block 6: **
+######Block 6: 
 
    Run desmeds to create meds files for each realization
 
-**Input parameters: **
+######Input parameters: 
 
 *          -c <confile> - configuration file like desmeds-config/meds-y3v02.yaml
           -t <tile> - tile name like DES0239+0216
@@ -52,7 +53,7 @@ Implemented steps:
                      32 - meds for injected images; 63 - all blocks;
 *
 
-**RunBase.sh ** 
+######RunBase.sh  
  
             an example how to create environment and run the BalrogBase.py
 *           input: <meds base> derectory where data will be;
@@ -64,16 +65,15 @@ Implemented steps:
                             ncpu equal the number of bands
 *
 
-       The program requires that Spencer Everett [Balrog-GalSim package
-         (https://github.com/sweverett/Balrog-GalSim.git)] be
-       installed in the base directory, and inputs/ subdirectory with star and
+       The program requires that Spencer Everett 
+       [Balrog-GalSim package(https://github.com/sweverett/Balrog-GalSim.git)] 
+       be installed in the base directory, and inputs/ subdirectory with star and
        galaxy catalogs should be present.
 
        To create coadded images and catalogs the program is using configuration
-       files found in etc/ subdirectory
+       files found in `etc` subdirectory
 
-       To run GalSim simulation the program requares the
-                      ** config_template_COSMOS.yaml **
+       To run GalSim simulation the program requares the **config_template_COSMOS.yaml**
        file be copied to `Balrog-GalSim/config/` subdirectory. And example of the
        file is included in the repository.
 
@@ -91,48 +91,53 @@ drwxr-xr-x 2 kuropat sdss     115 Aug  3 10:50 shr-config
 drwxr-xr-x 2 kuropat sdss     138 Aug  3 14:25 sof-config
 *
 
-**BalrogSofMegamixer.py**
+######BalrogSofMegamixer.py
  
       The program to create sof files for given data set.
-      Usage: BalrogSofMegamixer.py  <required inputs>
+      Usage: BalrogSofMegamixer.py  `<required inputs>`
         Required inputs:
+*
         -c <confile> - configuration file like sof-config/run-y3v02-sof.yaml
         -t <tile> - tile name like DES0239+0126
         -n <number of CPUs to use> like 16
-
+*
       Beside of input parameters the program requires following environment 
       variables be defined:
-        
-        'MEDS_DIR' - a base directory where input data are in the structure
-         <medsversion>/<tilename> for example ${MEDS_DIR}/y3v02/DES0239+0126/
-        'MEDS_DATA' equal to MEDS_DIR 
-        'BALROG_BASE' - the base directory from which the program is running
-        'medsconf' - meds version like y3v02
-        'NGMIXER_OUTPUT_DIR' - is directory where output of the ngmixer will be
-                               stored
-        Results will be put in ${NGMIXER_OUTPUT_DIR}/y3v02-sof/ directory
+*        
+        MEDS_DIR - a base directory where input data are in the structure
+         `<medsversion>/<tilename>` for example `${MEDS_DIR}/y3v02/DES0239+0126/`
+        MEDS_DATA equal to MEDS_DIR 
+        BALROG_BASE - the base directory from which the program is running
+        medsconf - meds version like y3v02
+        NGMIXER_OUTPUT_DIR - is directory where output of the ngmixer will bestored
+*
+        Results will be put in `${NGMIXER_OUTPUT_DIR}/y3v02-sof/` directory
 
 
-#RunSof.sh 
-        An example script how to create environment and run
-        BalrogSofMegamixer.py
-        input: <meds base> derectory where data will be. It is place where 
-                               <medsconf>/<tilename> subdirectories are;
-                   <tilename>;
-                   <mof configfuration file> - like
-		     sof-config/run-y3v02-sof.yaml
-                   <ncpu> -number of CPUs to use
+######RunSof.sh
+ 
+        An example script how to create environment and run BalrogSofMegamixer.py
+        input:
+* 
+        `<meds base>` derectory where data will be. It is place where 
+                               `<medsconf>/<tilename>` subdirectories are;
+         `<tilename>` name of the tile
+         `<mof configfuration file>`  like `sof-config/run-y3v02-sof.yaml`
+          `<ncpu>` number of CPUs to use
+*
+######BalrogMofMegamixer.py 
 
-#BalrogMofMegamixer.py 
          A program to create mof using Sheldon's megamixer.
          Input parameters are the same as in BalrogSofMegamixer.py
 
-#RunMof.sh 
+######RunMof.sh 
+
         An example script how to create environment and run
         BalrogMofMegamixer.py
-        input: <meds base> derectory where data will be. It is place where 
-                               <medsconf>/<tilename> subdirectories are;
-                   <tilename>;
-                   <mof configfuration file> - like  
-		       mof-config/run-y3v02-mof.yaml
-                   <ncpu> -number of CPUs to use
+        input:
+*
+                   `<meds base>` derectory where data will be. It is place where `<medsconf>/<tilename>` subdirectories are;
+                   `<tilename>`;
+                   `<mof configfuration file>`  like `mof-config/run-y3v02-mof.yam`l
+                   `<ncpu>` number of CPUs to use
+*
