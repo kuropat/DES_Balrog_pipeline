@@ -40,46 +40,49 @@ Implemented steps:
 
 ###### Block 6: 
 
-   Run desmeds to create meds files for each realization
+Run desmeds to create meds files for each realization
 
 ###### Input parameters: 
 
 *
-          -c `<confile>`  configuration file like `desmeds-config/meds-y3v02.yaml`
-          -t `<tile>`  tile name like `DES0239+0216`
-          -n `<number of CPUs to use in GalSim>` like 16
-          -m `<mode>`  positional code 1 -prep only; 2 - coadd and catalog 
-                      4 - meds for base; 8 - generate injected images;
-                     16 - coadd and catalog for injected images;
-                     32 - meds for injected images; 63 - all blocks;
+          -c <confile>  configuration file like `desmeds-config/meds-y3v02.yaml`
+          -t <tile>  tile name like `DES0239+0216`
+          -n <number of CPUs to use in GalSim> like 16
+          -m <mode>  positional code 1 -prep only; 2 - coadd and catalog 
+                      4 - meds for base; 8 - generate injected images
+                     16 - coadd and catalog for injected images
+                     32 - meds for injected images; 63 - all blocks
 *
 
 #### RunBase.sh  
  
-            an example how to create environment and run the BalrogBase.py
-*           input: `<meds base>` derectory where data will be;
-                   `<tilename>`
-                   `<mode>` positional code 1 -prep only; 2 - coadd and catalog 
-	                4 - meds for base; 8 - injection; 16 - coadd and catalog                         for injected images; 
-	                32 - meds for injected; 63 - all together
-                   `<ncpu>` - number of CPUs to be used by GalSim, by defauld the progrm will use
+An example how to create environment and run the BalrogBase.py
+input:
+*
+           <meds base> derectory where data will be;
+           <tilename>
+           <mode> positional code 1 -prep only; 2 - coadd and catalog 
+	          4 - meds for base; 8 - injection; 16 - coadd and catalog
+                     for injected images; 
+	          32 - meds for injected; 63 - all together
+           <ncpu> - number of CPUs to be used by GalSim, by defauld the progrm will use
                             ncpu equal the number of bands
 *
 
-       The program requires that Spencer Everett 
-       [Balrog-GalSim package](https://github.com/sweverett/Balrog-GalSim.git)
-       be installed in the base directory, and inputs/ subdirectory with star and
-       galaxy catalogs should be present.
+The program requires that Spencer Everett
+[Balrog-GalSim package](https://github.com/sweverett/Balrog-GalSim.git)
+ be installed in the base directory, and inputs/ subdirectory with star and
+ galaxy catalogs should be present.
 
-       To create coadded images and catalogs the program is using configuration
-       files found in `etc` subdirectory
+To create coadded images and catalogs the program is using configuration
+files found in `etc` subdirectory
 
-       To run GalSim simulation the program requares the `config_template_COSMOS.yaml`
-       file be copied to `Balrog-GalSim/config/` subdirectory. And example of the
-       file is included in the repository.
+To run GalSim simulation the program requares the `config_template_COSMOS.yaml`
+file be copied to `Balrog-GalSim/config/` subdirectory. And example of the
+file is included in the repository.
 
-       In general the base directory structure should look like following:
-*       
+In general the base directory structure should look like following:
+```      
 drwxr-xr-x 7 kuropat sdss     155 Aug 10 13:37 Balrog-GalSim
 drwxr-xr-x 4 kuropat sdss      41 Aug  6 14:08 balrogutils
 drwxr-xr-x 3 kuropat sdss      24 Aug  3 10:49 DESDATA
@@ -90,20 +93,20 @@ drwxr-xr-x 3 kuropat sdss    4096 Aug  3 10:50 inputs
 drwxr-xr-x 2 kuropat sdss      70 Aug  8 13:13 mof-config
 drwxr-xr-x 2 kuropat sdss     115 Aug  3 10:50 shr-config
 drwxr-xr-x 2 kuropat sdss     138 Aug  3 14:25 sof-config
-*
+```
 
 #### BalrogSofMegamixer.py
  
-      The program to create sof files for given data set.
-      Usage: BalrogSofMegamixer.py  `<required inputs>`
-        Required inputs:
+The program to create sof files for given data set.
+Usage: BalrogSofMegamixer.py  `<required inputs>`
+Required inputs:
 *
         -c `<confile>` - configuration file like `sof-config/run-y3v02-sof.yaml`
         -t `<tile>` - tile name `like DES0239+0126`
         -n `<number of CPUs to use>` like 16
 *
-      Beside of input parameters the program requires following environment 
-      variables be defined:
+Beside of input parameters the program requires following environment 
+variables be defined:
 *        
         MEDS_DIR - a base directory where input data are in the structure
          `<medsversion>/<tilename>` for example `${MEDS_DIR}/y3v02/DES0239+0126/`
@@ -112,33 +115,32 @@ drwxr-xr-x 2 kuropat sdss     138 Aug  3 14:25 sof-config
         `medsconf`  meds version like y3v02
         `NGMIXER_OUTPUT_DIR`  is directory where output of the ngmixer will bestored
 *
-        Results will be put in `${NGMIXER_OUTPUT_DIR}/y3v02-sof/` directory
+Results will be put in `${NGMIXER_OUTPUT_DIR}/y3v02-sof/` directory
 
 
 #### RunSof.sh
  
-        An example script how to create environment and run BalrogSofMegamixer.py
-        input:
+An example script how to create environment and run BalrogSofMegamixer.py
+input:
 * 
-        `<meds base>` derectory where data will be. It is place where 
-                               `<medsconf>/<tilename>` subdirectories are;
-         `<tilename>` name of the tile
-         `<mof configfuration file>`  like `sof-config/run-y3v02-sof.yaml`
-         `<ncpu>` number of CPUs to use
+         <meds base> derectory where data will be. It is place where 
+                               `<medsconf>/<tilename>` subdirectories are.
+         <tilename> name of the tile
+         <mof configfuration file>  like `sof-config/run-y3v02-sof.yaml`
+         <ncpu> number of CPUs to use
 *
 #### BalrogMofMegamixer.py 
 
-         A program to create mof using Sheldon's megamixer.
-         Input parameters are the same as in BalrogSofMegamixer.py
+A program to create mof using Sheldon's megamixer.
+Input parameters are the same as in BalrogSofMegamixer.py
 
 #### RunMof.sh 
 
-        An example script how to create environment and run
-        BalrogMofMegamixer.py
-        input:
+An example script how to create environment and run BalrogMofMegamixer.py
+input:
 *
-                   `<meds base>` derectory where data will be. It is place where `<medsconf>/<tilename>` subdirectories are;
-                   `<tilename>`;
-                   `<mof configfuration file>`  like `mof-config/run-y3v02-mof.yam`l
-                   `<ncpu>` number of CPUs to use
+       <meds base> derectory where data will be. It is place where `<medsconf>/<tilename>` subdirectories are;
+       <tilename>
+       <mof configfuration file>  like `mof-config/run-y3v02-mof.yaml`
+       <ncpu> number of CPUs to use
 *
