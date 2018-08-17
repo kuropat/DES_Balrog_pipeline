@@ -60,19 +60,18 @@ An example how to create environment and run the BalrogBase.py
 ###### input parameters:
 
 *
-           <meds base> derectory where data will be
-           <tilename>
-           <mode> positional code:
-                  - 
-                    1 prep only 
-                    2 coadd and catalog 
-	            4 meds for base
-                    8 injection 
-                   16 coadd and catalog for injected images 
-	           32  meds for injected 
-                   63  all together
-                  -
-           <ncpu>  number of CPUs to be used by GalSim, by defauld the progrm will use
+<meds base> derectory where data will be
+<tilename>
+<mode> positional code:
+ 
+      1 prep only 
+      2 coadd and catalog 
+      4 meds for base
+      8 injection 
+     16 coadd and catalog for injected images 
+     32  meds for injected 
+     63  all together
+<ncpu>  number of CPUs to be used by GalSim, by defauld the progrm will use
                             ncpu equal the number of bands
 *
 
@@ -109,9 +108,9 @@ Usage: BalrogSofMegamixer.py  `<required inputs>`
 ###### Required inputs:
 
 *
-        -c `<confile>` - configuration file like `sof-config/run-y3v02-sof.yaml`
-        -t `<tile>` - tile name `like DES0239+0126`
-        -n `<number of CPUs to use>` like 16
+        -c <confile>  configuration file like `sof-config/run-y3v02-sof.yaml`
+        -t <tile>  tile name like `DES0239+0126`
+        -n <number of CPUs to use> like 16
 *
 
 Beside of input parameters the program requires following environment 
@@ -119,10 +118,10 @@ variables be defined:
 *        
         MEDS_DIR - a base directory where input data are in the structure
          `<medsversion>/<tilename>` for example `${MEDS_DIR}/y3v02/DES0239+0126/`
-        `MEDS_DATA` equal to `MEDS_DIR`  
-        `BALROG_BASE`  the base directory from which the program is running
-        `medsconf`  meds version like y3v02
-        `NGMIXER_OUTPUT_DIR`  is directory where output of the ngmixer will bestored
+        MEDS_DATA equal to MEDS_DIR  
+        BALROG_BASE  the base directory from which the program is running
+        medsconf  meds version like y3v02
+        NGMIXER_OUTPUT_DIR  is directory where output of the ngmixer will bestored
 *
 
 Results will be put in `${NGMIXER_OUTPUT_DIR}/y3v02-sof/` directory
