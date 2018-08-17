@@ -57,9 +57,10 @@ Run desmeds to create meds files for each realization
 #### RunBase.sh  
 An example how to create environment and run the BalrogBase.py
 
-input:
+###### input parameters:
+
 *
-           <meds base> derectory where data will be;
+           <meds base> derectory where data will be
            <tilename>
            <mode> positional code:
                   - 1 prep only; 
@@ -104,12 +105,14 @@ drwxr-xr-x 2 kuropat sdss     138 Aug  3 14:25 sof-config
  
 The program to create sof files for given data set.
 Usage: BalrogSofMegamixer.py  `<required inputs>`
-Required inputs:
+###### Required inputs:
+
 *
         -c `<confile>` - configuration file like `sof-config/run-y3v02-sof.yaml`
         -t `<tile>` - tile name `like DES0239+0126`
         -n `<number of CPUs to use>` like 16
 *
+
 Beside of input parameters the program requires following environment 
 variables be defined:
 *        
@@ -120,13 +123,15 @@ variables be defined:
         `medsconf`  meds version like y3v02
         `NGMIXER_OUTPUT_DIR`  is directory where output of the ngmixer will bestored
 *
+
 Results will be put in `${NGMIXER_OUTPUT_DIR}/y3v02-sof/` directory
 
 
 #### RunSof.sh
  
 An example script how to create environment and run BalrogSofMegamixer.py
-input:
+###### input parameters:
+
 * 
          <meds base> derectory where data will be. It is place where 
                                `<medsconf>/<tilename>` subdirectories are.
@@ -142,7 +147,8 @@ Input parameters are the same as in BalrogSofMegamixer.py
 #### RunMof.sh 
 
 An example script how to create environment and run BalrogMofMegamixer.py
-input:
+###### input parameters:
+
 *
        <meds base> derectory where data will be. It is place where `<medsconf>/<tilename>` subdirectories are;
        <tilename>
