@@ -1,66 +1,84 @@
 # DES_Balrog_pipeline
-# Based on Erin Sheldon meds and mof and megamixer packages
-#
-# Modifyed and repacked version. Version 2.0
-#
-#  
+## Based on Erin Sheldon meds and mof and megamixer packages
+#### Modifyed and repacked version. Version 2.0
+  
 
-code specific to des Balrog production is located in
-"balrogutils" directory. The directory contains bin/ and python/ subdirectories.
+** code specific to des Balrog production is located in
+"balrogutils" directory.**
+The directory contains bin/ and python/ subdirectories.
+
 Executable modules are:
 
-BalrogBase.py
+**BalrogBase.py**
 
-# The code provides a baseline for Balrog production
+ The code provides a baseline for Balrog production
 Implemented steps:
-#Block 1:
+
+**Block 1: **
+
    Query DESDM database for a tile configuration.    
    Run meds_prep to copy all necessary files from DESDM to $MEDS_DATA directory
-#Block 2:
+
+**Block 2: **
+
    Create coadded images and catalogs from files downloaded by Block 1
-#Block 3:
+
+**Block 3: **
+
    Run desmeds to create meds files on input images
-#Block 4:
+
+**Block 4: **
+
    Generate images with injected objects in
-   <meds_data>/<medsconf>/balrog_images/<realisation>/<medsconf>/<tilename> 
+   `<meds_data>/<medsconf>/balrog_images/<realisation>/<medsconf>/<tilename>` 
    prepare configurations, filelists and images in each realisation subdirectory   
-#Block 5:
+
+**Block 5: **
+
    Create coadded images and catalogs for ech realization.
-#Block 6:
+
+**Block 6: **
+
    Run desmeds to create meds files for each realization
 
-Input parameters:
+**Input parameters: **
 
-          -c <confile> - configuration file like desmeds-config/meds-y3v02.yaml
+*          -c <confile> - configuration file like desmeds-config/meds-y3v02.yaml
           -t <tile> - tile name like DES0239+0216
           -n <number of CPUs to use in GalSim> like 16
           -m <mode> - positional code 1 -prep only; 2 - coadd and catalog 
                       4 - meds for base; 8 - generate injected images;
                      16 - coadd and catalog for injected images;
                      32 - meds for injected images; 63 - all blocks;
+*
 
-RunBase.sh - an example how to create environment and run the BalrogBase.py
-           input: <meds base> derectory where data will be;
+**RunBase.sh ** 
+ 
+            an example how to create environment and run the BalrogBase.py
+*           input: <meds base> derectory where data will be;
                    <tilename>
                    <mode> positional code 1 -prep only; 2 - coadd and catalog 
 	                4 - meds for base; 8 - injection; 16 - coadd and catalog                         for injected images; 
 	                32 - meds for injected; 63 - all together
                    <ncpu> - number of CPUs to be used by GalSim, by defauld the progrm will use
                             ncpu equal the number of bands
-       The program requires that Spencer Everett Balrog-GalSim package
-         (https://github.com/sweverett/Balrog-GalSim.git) be
+*
+
+       The program requires that Spencer Everett [Balrog-GalSim package
+         (https://github.com/sweverett/Balrog-GalSim.git)] be
        installed in the base directory, and inputs/ subdirectory with star and
        galaxy catalogs should be present.
+
        To create coadded images and catalogs the program is using configuration
        files found in etc/ subdirectory
 
        To run GalSim simulation the program requares the
-                       config_template_COSMOS.yaml
-       file be copied to Balrog-GalSim/config/ subdirectory. And example of the
+                      ** config_template_COSMOS.yaml **
+       file be copied to `Balrog-GalSim/config/` subdirectory. And example of the
        file is included in the repository.
 
        In general the base directory structure should look like following:
-       
+*       
 drwxr-xr-x 7 kuropat sdss     155 Aug 10 13:37 Balrog-GalSim
 drwxr-xr-x 4 kuropat sdss      41 Aug  6 14:08 balrogutils
 drwxr-xr-x 3 kuropat sdss      24 Aug  3 10:49 DESDATA
@@ -71,9 +89,10 @@ drwxr-xr-x 3 kuropat sdss    4096 Aug  3 10:50 inputs
 drwxr-xr-x 2 kuropat sdss      70 Aug  8 13:13 mof-config
 drwxr-xr-x 2 kuropat sdss     115 Aug  3 10:50 shr-config
 drwxr-xr-x 2 kuropat sdss     138 Aug  3 14:25 sof-config
+*
 
-
-#BalrogSofMegamixer.py 
+**BalrogSofMegamixer.py**
+ 
       The program to create sof files for given data set.
       Usage: BalrogSofMegamixer.py  <required inputs>
         Required inputs:
