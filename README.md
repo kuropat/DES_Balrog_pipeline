@@ -36,7 +36,7 @@ Implemented steps:
 
 ###### Block 5: 
 
-   Create coadded images and catalogs for ech realization.
+Create coadded images and catalogs for ech realization.
 
 ###### Block 6: 
 
@@ -55,17 +55,22 @@ Run desmeds to create meds files for each realization
 *
 
 #### RunBase.sh  
- 
 An example how to create environment and run the BalrogBase.py
+
 input:
 *
            <meds base> derectory where data will be;
            <tilename>
-           <mode> positional code 1 -prep only; 2 - coadd and catalog 
-	          4 - meds for base; 8 - injection; 16 - coadd and catalog
-                     for injected images; 
-	          32 - meds for injected; 63 - all together
-           <ncpu> - number of CPUs to be used by GalSim, by defauld the progrm will use
+           <mode> positional code:
+                  - 1 prep only; 
+                    2 coadd and catalog 
+	            4 meds for base
+                    8 injection 
+                   16 coadd and catalog for injected images 
+	           32  meds for injected 
+                   63  all together
+                  -
+           <ncpu>  number of CPUs to be used by GalSim, by defauld the progrm will use
                             ncpu equal the number of bands
 *
 
