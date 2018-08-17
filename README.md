@@ -32,7 +32,7 @@ Implemented steps:
 
    Generate images with injected objects in
    `<meds_data>/<medsconf>/balrog_images/<realisation>/<medsconf>/<tilename>` 
-   prepare configurations, filelists and images in each realisation subdirectory   
+   prepare configurations, filelists and images in each realization subdirectory   
 
 ###### Block 5: 
 
