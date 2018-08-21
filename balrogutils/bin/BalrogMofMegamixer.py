@@ -24,11 +24,11 @@ def runChunkScript(inpar):
     workdir = chunkbase + '/' + chunkdir
     tilename = inpar[2]
     medsconf = inpar[3]
-    os.chdir(workdir)
+#    os.chdir(workdir)
     scriptname = workdir + '/' + tilename+'-'+medsconf+'-mof-'+chunkext+'.sh'
     res = ''
     try:
-        res=subprocess.check_output(scriptname)  
+        res=subprocess.check_output(scriptname,shell=True)  
     except subprocess.CalledProcessError as e:
         print "error %s"% e
         print res
@@ -204,9 +204,13 @@ if __name__ == "__main__":
     print pars
 
     pool = Pool(processes=ncpu)
-    pool.map(runChunkScript, pars) 
+#    pool.map(runChunkScript, pars)
+    it = pool.imap(runChunkScript, pars) 
+    "Tis will make dynamic iteration over the pool "
+    for i in it:
+        continue
     pool.close()
-    pool.join()
+#    pool.join()
     " Now collate chunks "
     status = balP.runMegamixer(confile,'collate',tilesF)
     print "collate status=%d \n" % status
