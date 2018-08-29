@@ -21,10 +21,9 @@ setup fitsverify
 setup esutil 0.6.2rc1+1
 setup pixcorrect 0.5.3+12
 setup despydb
-setup ngmixer y3v0.9.4c
+setup ngmixer y3v0.9.4b
 setup meds 0.9.3+0
 setup cfitsio 3.370+0
-setup covmatrix 0.9.0+1 
 setup easyaccess
 #
 export BALROG_BASE=`pwd`
