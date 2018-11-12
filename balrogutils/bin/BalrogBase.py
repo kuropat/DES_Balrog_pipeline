@@ -13,40 +13,14 @@ This includes following stepe:
  """
 import os
 import sys
-import math
 import string
-import shutil
 import getopt
 import subprocess
 import yaml
-import fitsio
-import pickle
-from despyastro import wcsutil
-#
-import time
-import timeit
-from time import sleep
-import urllib2, ssl
-
-import easyaccess
-import cx_Oracle
-
 import numpy
-import glob
 #
 from multiprocessing import Pool
-from numpy.random.mtrand import seed
-from numpy import real
-from scipy.weave.catalog import os_dependent_catalog_name
-from setuptools.command.easy_install import sys_executable
-#from ngmixer import ngmixit_tools 
 
-
-try:
-    from termcolor import colored
-except:
-    def colored(line, color):
-        return line
 from balrogutils.BalrogUtils import BalrogUtils
 
 # The query template used to get the geometry of the tile
@@ -321,11 +295,12 @@ def makeMeds(inpar):
 if __name__ == "__main__":
     print sys.argv
     nbpar = len(sys.argv)
-    if nbpar < 5:
+    if nbpar < 6:
         "Usage: BalrogBase.py  <required inputs>"
         print "  Required inputs:"
         print "  -c <confile> - configuration file"
         print " -t <tile> - tile name"
+        print " -g <galsimconf> - GalSim configuration file "
         print " -n <number of CPUs to use in GalSim "
         print " -m <mode> - positional code 1 -prep only; 2 - coadd and catalog \n"
         print "    4 - meds for base; 8 - injection; 16 - coadd and catalog for injected; \n"
@@ -334,12 +309,13 @@ if __name__ == "__main__":
         sys.exit(-2)
 
     try:
-        opts, args = getopt.getopt(sys.argv[1:],"hc:t:n:m:",["confile","tilename","ncpu","mode"])
+        opts, args = getopt.getopt(sys.argv[1:],"hc:t:g:n:m:",["confile","tilename","galsimconf","ncpu","mode"])
     except getopt.GetoptError:
         print "Usage: BalrogBase.py <required inputs>"
         print "  Required inputs:"
         print "  -c <confile> - configuration file"
         print " -t <tile> - tile name"
+        print " -g <galsimconf> - GalSim configuration file "
         print " -n <number of CPUs to use in GalSim "
         print " -m <mode> - positional code 1 -prep only; 2 - coadd and catalog \n"
         print "    4 - meds for base; 8 - injection; 16 - coadd and catalog for injected; \n"
@@ -347,6 +323,7 @@ if __name__ == "__main__":
         sys.exit(2)
     c_flag = 0
     t_flag = 0
+    g_flag = 0
     m_flag = 0
     n_flag = 0
     ncpu = 4
@@ -357,6 +334,7 @@ if __name__ == "__main__":
             print "  Required inputs:"
             print "  -c <confile> - configuration file"
             print " -t <tile> - tile name"
+            print " -g <galsimconf> - GalSim configuration file "
             print " -n <number of CPUs to use in GalSim "
             print " -m <mode> - positional code 1 -prep only; 2 - coadd and catalog \n"
             print "    4 - meds for base; 8 - injection; 16 - coadd and catalog for injected; \n"
@@ -369,18 +347,22 @@ if __name__ == "__main__":
         elif opt in ("-t","--tilename"):
             t_flag = 1
             tilename = arg
+        elif opt in ("-g","--galsimconf"):
+            g_flag = 1
+            gconf = arg
         elif opt in ("-m","--mode"):
             m_flag = 1
             mode = int(arg)
         elif opt in ("-n","--ncpu"):
             n_flag = 1
             ncpu = int(arg)
-    sumF = c_flag + t_flag + m_flag + n_flag
-    if sumF != 4:
+    sumF = c_flag + t_flag + g_flag + m_flag + n_flag
+    if sumF != 5:
         print "Usage: BalrogBase.py <required inputs>"
         print "  Required inputs:"
         print "  -c <confile> - configuration file"
         print " -t <tile> - tile name"
+        print " -g <galsimconf> - GalSim configuration file "
         print " -n <number of CPUs to use in GalSim "
         print " -m <mode> - positional code 1 -prep only; 2 - coadd and catalog \n"
         print "    4 - meds for base; 8 - injection; 16 - coadd and catalog for injected; \n"
@@ -419,10 +401,10 @@ if __name__ == "__main__":
 #    
         pool = Pool(processes=ncpub)
         pool.map(makeCatalog,pars)
-#    
-        balP.makeObjMaps(datadir)
         pool.close()
         pool.join()
+        balP.makeObjMaps(datadir)
+        balP.make_psf_map(datadir)
     " Check if we need base meds "
     if (mode & 4 ) == 4:
         print "Start with base meds \n"
@@ -445,25 +427,21 @@ if __name__ == "__main__":
         outf=open(tilelistF,'w')
         outf.write(tilename+'\n')
         outf.close()
-        confFile = './Balrog-GalSim/config/bal_config.yaml'
+        confFile = './Balrog-GalSim/config/' + gconf
         geom_file = './inputs/Y3A2_COADDTILE_GEOM.fits'
         config_dir = './Balrog-GalSim/config/'
-        psf_dir = datadir
+        psf_dir = datadir+'/psfs'
         tile_dir = basedir
         config_file = 'bal_config.yaml'
    
         output_dir =  basedir
-        command = "python ./Balrog-GalSim/balrog/balrog_injection.py %s -l %s -g %s -t %s -c %s -o %s -n %d -v 1 " % (config_file,tilelistS,geom_file,tile_dir,config_dir,output_dir,ncpu) 
-#        command = ['python','%s/Balrog-GalSim/balrog/balrog_injection.py' % workdir]
-#        command +=[ '%s' % config_file, '-l', '%s' % tilelistS, '-g' ,'%s' %geom_file ]
-#        command +=['-t', '%s'%tile_dir, '-c','%s'%config_dir, '-o', '%s' % output_dir ]
-#        command +=['-n', '%d'%ncpu,'-v', '1' ]
+#        command = "python ./Balrog-GalSim/balrog/balrog_injection.py %s -l %s -g %s -t %s -c %s -o %s -n %d -v 1 " % (config_file,tilelistS,geom_file,tile_dir,config_dir,output_dir,ncpu) 
+        command = "./balrogutils/bin/RunInject.sh %s %s %s %d " % (basedir,tilename,confFile,ncpu) 
         print command
         print '\n'
         retval=''
         try:
             retval = subprocess.call(command.split(),stderr=subprocess.STDOUT)
-            #retval = subprocess.check_output(command,stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as e:
             print e.output
             print 'Error running command: \n' 
@@ -474,6 +452,8 @@ if __name__ == "__main__":
 
         print retval
         print '\n'
+        if mode == 8:
+            sys.exit(retval)
     "-------------------------------------------------------"
     balP.prepInData()
     reallist = balP.getRealizations()

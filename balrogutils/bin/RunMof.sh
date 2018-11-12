@@ -19,11 +19,10 @@ source /cvmfs/des.opensciencegrid.org/eeups/startupcachejob21i.sh
 setup mofpsfex 0.3.2
 setup despyastro 0.3.9+2
 setup fitsverify
-setup esutil 0.6.2rc1+1
 setup pixcorrect 0.5.3+12
 setup despydb
 setup ngmixer y3v0.9.4b
-setup meds 0.9.3+0
+setup -j esutil 0.6.2rc1+1
 setup cfitsio 3.370+0
 setup easyaccess
 #

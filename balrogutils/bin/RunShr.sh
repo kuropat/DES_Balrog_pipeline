@@ -24,11 +24,13 @@ setup pixcorrect 0.5.3+12
 setup despydb
 setup easyaccess
 setup meds 0.9.3+0
-#setup -j desmeds 0.9.2.2+0
+#
 setup esutil esdevel
 setup fitsio 0.9.12rc1
 setup numba
-setup ngmixer v0.9.6
+setup ngmixer y3v0.9.4b
+#
+#setup -j esutil 0.6.2rc1+1
 
 #
 export BALROG_BASE=`pwd`

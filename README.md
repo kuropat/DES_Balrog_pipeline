@@ -47,6 +47,8 @@ Run desmeds to create meds files for each realization
 *
           -c <confile>  configuration file like `desmeds-config/meds-y3v02.yaml`
           -t <tile>  tile name like `DES0239+0216`
+	  -g <galsimconfig> - name of the configuration file for GalSim, that
+             should be in Balrog-GalSim/config/ directory. 
           -n <number of CPUs to use in GalSim> like 16
           -m <mode>  positional code 1 -prep only; 2 - coadd and catalog 
                       4 - meds for base; 8 - generate injected images
@@ -62,6 +64,7 @@ An example how to create environment and run the BalrogBase.py
 *
        <meds base> derectory where data will be
        <tilename>
+       <galsin config file> - GalSim configuration yaml file
        <mode> positional code:
              1 prep only 
              2 coadd and catalog 
@@ -153,4 +156,30 @@ An example script how to create environment and run BalrogMofMegamixer.py
        <tilename>
        <mof configfuration file>  like `mof-config/run-y3v02-mof.yaml`
        <ncpu> number of CPUs to use
+*
+
+#### RunBfd.sh
+An example script how to run BFD program.
+###### input parameters:
+*
+       <meds base> derectory where data will be. It is place where `<medsconf>/<tilename>` subdirectories are;
+       <tilename>
+*
+
+#### RunShr.sh
+An example script how to run metacal program.
+###### input parameters:
+*
+     <meds base> derectory where data will be. It is place where `<medsconf>/<tilename>` subdirectories are; 
+     <tilename>
+     <mcal configfuration file>  like `shr-config/run-y3v02-mcal.yaml` 
+     <ncpu> number of CPUs to use
+*
+#### BalrogShrMegamixer.puy 
+The program to tun megamixer metacal program on MOF files  produced by BalrogMofMegamixer.py program 
+###### input parameters:
+*
+        -c <confile> - configuration file
+        -t <tile> - tile name
+        -n <number of CPUs to use> 
 *

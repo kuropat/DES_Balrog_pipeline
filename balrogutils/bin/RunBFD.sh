@@ -26,6 +26,7 @@ echo "Start balrog bfd at " $DATE > bfd_${tilename}.log
 #
 source /cvmfs/des.opensciencegrid.org/eeups/startupcachejob21i.sh
 DESTCACHE="persistent"
+#
 setup pyyaml 3.11+2
 setup astropy 2.0.4+0
 setup galsim 1.5.1tmv
@@ -37,7 +38,9 @@ setup fitsio 1.0.0rc1+0
 setup esutil esdevel
 setup pixmappy 1.0
 setup bfd 2.0
-setup bfdmeds 1.0
+setup bfdmeds 1.0 
+#
+setup extralibs
 #
 export BALROG_BASE=`pwd`
 export PYTHONPATH=${BALROG_BASE}/balrogutils/python/:${PYTHONPATH}
@@ -73,6 +76,8 @@ export DESDATA=${BALROG_BASE}/DESDATA
 
 cd ${BALROG_BASE}
 
+#
+# Note BFD_DIR is defined in setup bfd 2.0
 #
 echo "Start with rundesmultiband.py "  >> ${BALROG_BASE}/bfd_${tilename}.log 2>&1
 
