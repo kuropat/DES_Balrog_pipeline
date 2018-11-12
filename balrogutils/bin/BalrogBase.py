@@ -427,7 +427,7 @@ if __name__ == "__main__":
         outf=open(tilelistF,'w')
         outf.write(tilename+'\n')
         outf.close()
-        confFile = './Balrog-GalSim/config/' + gconf
+        confFile =  gconf
         geom_file = './inputs/Y3A2_COADDTILE_GEOM.fits'
         config_dir = './Balrog-GalSim/config/'
         psf_dir = datadir+'/psfs'
