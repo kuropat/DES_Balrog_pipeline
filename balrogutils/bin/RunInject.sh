@@ -6,7 +6,7 @@
 #                   <ncpu> - number of CPUs to be used by GalSim
 #
 echo $1
-export $HOME=`pwd`
+export HOME=`pwd`
 echo $HOME
 HOSTNAME=`/bin/hostname`
 DATE=`/bin/date +%H%M%S`
