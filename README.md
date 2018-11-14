@@ -62,7 +62,7 @@ An example how to create environment and run the BalrogBase.py
 ###### input parameters:
 
 *
-       <meds base> derectory where data will be
+       <meds base> directory where data will be
        <tilename>
        <galsin config file> - GalSim configuration yaml file
        <mode> positional code:
@@ -135,7 +135,7 @@ An example script how to create environment and run BalrogSofMegamixer.py
 ###### input parameters:
 
 * 
-         <meds base> derectory where data will be. It is place where 
+         <meds base> directory where data will be. It is place where 
                                `<medsconf>/<tilename>` subdirectories are.
          <tilename> name of the tile
          <mof configfuration file>  like `sof-config/run-y3v02-sof.yaml`
@@ -152,7 +152,7 @@ An example script how to create environment and run BalrogMofMegamixer.py
 ###### input parameters:
 
 *
-       <meds base> derectory where data will be. It is place where `<medsconf>/<tilename>` subdirectories are;
+       <meds base> directory where data will be. It is place where `<medsconf>/<tilename>` subdirectories are;
        <tilename>
        <mof configfuration file>  like `mof-config/run-y3v02-mof.yaml`
        <ncpu> number of CPUs to use
@@ -162,7 +162,7 @@ An example script how to create environment and run BalrogMofMegamixer.py
 An example script how to run BFD program.
 ###### input parameters:
 *
-       <meds base> derectory where data will be. It is place where `<medsconf>/<tilename>` subdirectories are;
+       <meds base> directory where data will be. It is place where `<medsconf>/<tilename>` subdirectories are;
        <tilename>
 *
 
@@ -170,7 +170,7 @@ An example script how to run BFD program.
 An example script how to run metacal program.
 ###### input parameters:
 *
-     <meds base> derectory where data will be. It is place where `<medsconf>/<tilename>` subdirectories are; 
+     <meds base> directory where data will be. It is place where `<medsconf>/<tilename>` subdirectories are; 
      <tilename>
      <mcal configfuration file>  like `shr-config/run-y3v02-mcal.yaml` 
      <ncpu> number of CPUs to use
