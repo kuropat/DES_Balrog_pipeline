@@ -108,7 +108,7 @@ class BalrogShrMegamixer():
     def makeNewConf(self,outconf,chunksize):
         outconf = open(outconf,'w')
         for line in open(self.confile):
-            if line.find('chunksize') > 0:
+            if line.find('chunksize:') > 0:
                 tokens = line.split(':')
                 line = tokens[0]+': '+str(chunksize)
                 outconf.write(line)
