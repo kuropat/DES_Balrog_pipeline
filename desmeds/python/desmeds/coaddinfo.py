@@ -628,6 +628,7 @@ _DOWNLOAD_CMD = r"""
     wget \
         --http-user=%(user)s --http-password=%(password)s --no-check-certificate \
         -i %(flist_file)s -P %(source_dir)s -x -nH --cut-dirs=2 \
+        --progress=dot:giga \
         --base https://desar2.cosmology.illinois.edu/DESFiles/desarchive/ \
 """
 

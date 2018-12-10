@@ -1,0 +1,12 @@
+### Emacs
+\#*#
+*~
+
+### Python
+*.pyc
+build/
+dist/
+*.egg-info/
+
+### eups
+.eups/
