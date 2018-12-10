@@ -7,7 +7,7 @@ This includes following stepe:
 4. run injection with GalSim
 5. create coadd images and catalogs for injected images
 6. Create MEDS files for injected images.
- 
+
  By: N. Kuropatkin  04/30/2018
  reorganized by: N. Kuropatkin 08/06/2018
  """
@@ -45,7 +45,7 @@ def makeCoadd(inpar):
     naxis1 = args['naxis1']
     naxis2 = args['naxis2']
     pixscale = args['pixscale']
-   
+
     outpath = args['outpath']
     logpath = args['logpath']
     tilename = args['tilename']
@@ -54,7 +54,7 @@ def makeCoadd(inpar):
     (images,weights,fluxes,masks) = create_swarp_lists(args,band)
     SWARPcaller(images,weights,masks,fluxes,ra_cent,dec_cent,naxis1,naxis2,pixscale,restemp)
 #
-    coadd_assembleF(tilename,restemp)     
+    coadd_assembleF(tilename,restemp)
     return
 
 " -----------------  SWARP ----------------------- "
@@ -70,17 +70,17 @@ def SWARPcaller(ilist,wlist,msklist,flist,ra_cent,dec_cent,naxis1,naxis2,pixscal
     print "input images %d weights %d scales %d \n" % (len(tokens),len(tokens1),len(tokens2))
     print "images %s \n" % ilist
     print "weights %s \n" % wlist
-    print "scales %s \n" % flist        
+    print "scales %s \n" % flist
     command = ['swarp',"@%s"%ilist]
     command +=['-NTHREADS','1','-c',os.path.join('./','etc','Y3A1_v1_swarp.config')]
-        
+
     command +=["-PIXEL_SCALE","%f" % pixscale]
     command +=["-CENTER","%f,%f"%(ra_cent,dec_cent)]
     command +=['-IMAGE_SIZE',"%d,%d"%(naxis1,naxis2)]
     command +=["-BLANK_BADPIXELS","Y"]
     command +=["-BLANK_BADPIXELS","Y"]
     command +=["-DELETE_TMPFILES","Y"]
-    command +=["-COMBINE","Y","-COMBINE_TYPE","WEIGHTED"] 
+    command +=["-COMBINE","Y","-COMBINE_TYPE","WEIGHTED"]
     command +=["-IMAGEOUT_NAME",imName]
     command +=["-WEIGHTOUT_NAME",weightName]
     command +=["-FSCALE_DEFAULT","@%s"%flist]
@@ -88,12 +88,12 @@ def SWARPcaller(ilist,wlist,msklist,flist,ra_cent,dec_cent,naxis1,naxis2,pixscal
     command +=["-COPY_KEYWORDS","BUNIT,TILENAME,TILEID"]
 
     try:
-        subprocess.check_output(command)  
+        subprocess.check_output(command)
     except subprocess.CalledProcessError as e:
         print "error %s"% e
-    " Now make a mask image "        
+    " Now make a mask image "
     command = ['swarp',"@%s"%ilist]
-    command +=['-NTHREADS','1','-c',os.path.join('./','etc','Y3A1_v1_swarp.config')]       
+    command +=['-NTHREADS','1','-c',os.path.join('./','etc','Y3A1_v1_swarp.config')]
     command +=["-PIXEL_SCALE","%f"%pixscale]
     command +=["-CENTER","%f,%f"%(ra_cent,dec_cent)]
     command +=['-IMAGE_SIZE',"%d,%d"%(naxis1,naxis2)]
@@ -107,7 +107,7 @@ def SWARPcaller(ilist,wlist,msklist,flist,ra_cent,dec_cent,naxis1,naxis2,pixscal
     command +=["-COPY_KEYWORDS","BUNIT,TILENAME,TILEID"]
 
     try:
-        subprocess.check_output(command)  
+        subprocess.check_output(command)
     except subprocess.CalledProcessError as e:
         print "error %s"% e
     if os.path.exists(tmpImName):
@@ -131,20 +131,20 @@ def coadd_assembleF(tilename,restemp):
     print commandN
 
     try:
-        subprocess.check_output(commandN)  
+        subprocess.check_output(commandN)
     except subprocess.CalledProcessError as e:
         print "error %s"% e
-        
+
 """ create a list of random numbers to be used as seeds """
 def makeSeedList(nchunks):
     arrayV = numpy.random.rand(nchunks)
     seedlist=[]
     for c in range(0,nchunks):
         seedlist.append(int(arrayV[c]*10000))
-        
+
     return seedlist
-        
-""" -------- create list of files for SWARP 
+
+""" -------- create list of files for SWARP
 need to be modified after injection will be implemented  ------------ """
 def create_swarp_lists(args,band):
 
@@ -166,7 +166,7 @@ def create_swarp_lists(args,band):
     wext = "[2]"
     list_imF = outpathL+'/'+tilename+'_'+band+'_im.list'
     list_wtF = outpathL+'/'+tilename+'_'+band+'_wt.list'
-    list_mskF = outpathL+'/'+tilename+'_'+band+'_msk.list'      
+    list_mskF = outpathL+'/'+tilename+'_'+band+'_msk.list'
     list_fscF = outpathL+'/'+tilename+'_'+band+'_fsc.list'
     fim = open(list_imF,'w')
     fwt = open(list_wtF,'w')
@@ -193,9 +193,9 @@ def create_swarp_lists(args,band):
     fwt.close()
     mskf.close()
     scf.close()
-    return (list_imF,list_wtF,list_fscF,list_mskF)        
+    return (list_imF,list_wtF,list_fscF,list_mskF)
 
-" ---------------- run s-extractor to create objects catalog --------- "        
+" ---------------- run s-extractor to create objects catalog --------- "
 def makeCatalog(inpar):
 #    BalP, band = args
 #    BalP.makeCatalog(band)
@@ -206,15 +206,15 @@ def makeCatalog(inpar):
     naxis1 = args['naxis1']
     naxis2 = args['naxis2']
     pixscale = args['pixscale']
-   
+
     outpath = args['outpath']
     logpath = args['logpath']
     tilename = args['tilename']
     restemp = outpath+'/'+tilename
-    logfile = logpath+'/'+tilename    
+    logfile = logpath+'/'+tilename
     SEXcaller(restemp,band,logfile)
-    
-" -------------SEX ------------------- "    
+
+" -------------SEX ------------------- "
 def SEXcaller(restemp,band,logtemp):
         logFile = logtemp+'_'+band+'_sextractor.log'
 
@@ -233,8 +233,8 @@ def SEXcaller(restemp,band,logtemp):
         command+=['-WEIGHT_TYPE','MAP_WEIGHT']
         command+=['-PARAMETERS_NAME', os.path.join('./','etc','balrog_sex.param')]
         command+=['-FILTER_NAME', os.path.join('./','etc','gauss_3.0_7x7.conv')]
-        
-           
+
+
         print "command= %s \n" % command
         try:
 
@@ -243,12 +243,12 @@ def SEXcaller(restemp,band,logtemp):
         except subprocess.CalledProcessError as e:
             print "error %s"% e
         flog.write(output)
-        flog.write(error)    
+        flog.write(error)
 
 
-        flog.close()   
-        
-" Method to run mads maker ----------- "        
+        flog.close()
+
+" Method to run mads maker ----------- "
 def makeMeds(inpar):
     args = inpar[0]
     band = inpar[1]
@@ -257,16 +257,16 @@ def makeMeds(inpar):
     naxis1 = args['naxis1']
     naxis2 = args['naxis2']
     pixscale = args['pixscale']
-   
+
     outpath = args['outpath']
-    logpath = args['logpath'] 
+    logpath = args['logpath']
     medsdir = args['medsdir']
     medsconf = args['medsconf']
     tilename = args['tilename']
     confile = args['confile']
     datadir = args['datadir']
     restemp = outpath+'/'+tilename
-    logfile = logpath+'/'+tilename    
+    logfile = logpath+'/'+tilename
     fname = datadir+'/lists/'+tilename+'_'+band+'_fileconf-'+medsconf+'.yaml'
     with open(fname,'r') as fconf:
         conf=yaml.load( fconf)
@@ -281,15 +281,15 @@ def makeMeds(inpar):
         conf['coadd_cat_url'] = cat_url
         conf['coadd_seg_url'] = seg_url
         with open(fname, 'w') as conf_f:
-            yaml.dump(conf, conf_f) 
+            yaml.dump(conf, conf_f)
         command = ['desmeds-make-meds-desdm',confile,fname]
         print command
         try:
             subprocess.check_output(command)
         except:
             print "on meds for band %s \n" % band
-            
-            
+
+
 
 
 if __name__ == "__main__":
@@ -340,10 +340,10 @@ if __name__ == "__main__":
             print "    4 - meds for base; 8 - injection; 16 - coadd and catalog for injected; \n"
             print "    32 - meds for injected; 63 - all together; \n"
             sys.exit(2)
-           
+
         elif opt in ("-c","--confile"):
             c_flag = 1
-            confile = arg 
+            confile = arg
         elif opt in ("-t","--tilename"):
             t_flag = 1
             tilename = arg
@@ -376,9 +376,9 @@ if __name__ == "__main__":
     if (mode & 1) == 1:
         print "Start with PrepMeds \n"
         balP.prepMeds()
-    datadir = balP.tiledir 
+    datadir = balP.tiledir
     print " Data dir=%s \n" % datadir
-    
+
 
     ncpub = len(balP.bands)
 #
@@ -390,7 +390,7 @@ if __name__ == "__main__":
     " Check if we need coadd "
     if (mode & 2) == 2:
         pool = Pool(processes=ncpub)
-        pool.map(makeCoadd, pars) 
+        pool.map(makeCoadd, pars)
         pool.close()
         pool.join()
         coaddir = datadir+'/coadd'
@@ -398,7 +398,7 @@ if __name__ == "__main__":
         balP.makeDetectionImage(coaddir)
 #
         balP.cleanCoadds(coaddir)
-#    
+#
         pool = Pool(processes=ncpub)
         pool.map(makeCatalog,pars)
         pool.close()
@@ -410,11 +410,11 @@ if __name__ == "__main__":
         print "Start with base meds \n"
         pool = Pool(processes=ncpub)
         pool.map(makeMeds,pars)
-#    
+#
         pool.close()
         pool.join()
 
-    realdir = str(balP.medsdir)+'/' + str(balP.medsconf) +'/balrog_images/' 
+    realdir = str(balP.medsdir)+'/' + str(balP.medsconf) +'/balrog_images/'
     if not os.path.exists(realdir):
         os.makedirs(realdir)
 
@@ -428,15 +428,15 @@ if __name__ == "__main__":
         outf.write(tilename+'\n')
         outf.close()
         confFile =  gconf
-        geom_file = './inputs/Y3A2_COADDTILE_GEOM.fits'
+        geom_file = './Balrog-GalSim/inputs/Y3A2_COADDTILE_GEOM.fits'
         config_dir = './Balrog-GalSim/config/'
         psf_dir = datadir+'/psfs'
         tile_dir = basedir
         config_file = 'bal_config.yaml'
-   
+
         output_dir =  basedir
-#        command = "python ./Balrog-GalSim/balrog/balrog_injection.py %s -l %s -g %s -t %s -c %s -o %s -n %d -v 1 " % (config_file,tilelistS,geom_file,tile_dir,config_dir,output_dir,ncpu) 
-        command = "./balrogutils/bin/RunInject.sh %s %s %s %d " % (basedir,tilename,confFile,ncpu) 
+#        command = "python ./Balrog-GalSim/balrog/balrog_injection.py %s -l %s -g %s -t %s -c %s -o %s -n %d -v 1 " % (config_file,tilelistS,geom_file,tile_dir,config_dir,output_dir,ncpu)
+        command = "./balrogutils/bin/RunInject.sh %s %s %s %d " % (basedir,tilename,confFile,ncpu)
         print command
         print '\n'
         retval=''
@@ -444,8 +444,8 @@ if __name__ == "__main__":
             retval = subprocess.call(command.split(),stderr=subprocess.STDOUT)
         except subprocess.CalledProcessError as e:
             print e.output
-            print 'Error running command: \n' 
-            print e.cmd  
+            print 'Error running command: \n'
+            print e.cmd
             print ' \n see above shell error \n'
             print 'Return code: ' + str(e.returncode)
             sys.exit(e.returncode)
@@ -461,7 +461,7 @@ if __name__ == "__main__":
     print "basedir=%s \n" % basedir
     for real in reallist:
         datadir = basedir+'/balrog_images/' + str(real)+'/'+ str(balP.medsconf)+'/'+balP.tilename
-       
+
         print "realization=%s \n" % real
 
         if not os.path.exists(datadir):
@@ -473,20 +473,20 @@ if __name__ == "__main__":
             pars = [(args, band) for band in balP.bands ]
 #
             pool = Pool(processes=ncpub)
-            pool.map(makeCoadd, pars) 
+            pool.map(makeCoadd, pars)
             pool.close()
             pool.join()
-#       
+#
             coaddir = datadir+'/coadd'
             print "Make detection Image \n"
             balP.makeDetectionImage(coaddir)
 #
             balP.cleanCoadds(coaddir)
-#    
+#
             print " Start with MakeCatalog \n"
             pool = Pool(processes=ncpub)
             pool.map(makeCatalog,pars)
-#    
+#
             balP.makeObjMaps(datadir)
             pool.close()
             pool.join()
@@ -498,6 +498,6 @@ if __name__ == "__main__":
             print "run makeMeds with %d cpus \n" % ncpub
             pool = Pool(processes=ncpub)
             pool.map(makeMeds,pars)
-#    
+#
             pool.close()
             pool.join()
