@@ -175,7 +175,7 @@ An example script how to run metacal program.
      <mcal configfuration file>  like `shr-config/run-y3v02-mcal.yaml` 
      <ncpu> number of CPUs to use
 *
-#### BalrogShrMegamixer.puy 
+#### BalrogShrMegamixer.py 
 The program to tun megamixer metacal program on MOF files  produced by BalrogMofMegamixer.py program 
 ###### input parameters:
 *
