@@ -10,6 +10,7 @@ This includes following stepe:
 
  By: N. Kuropatkin  04/30/2018
  reorganized by: N. Kuropatkin 08/06/2018
+ added --clobber key to coadd_assemble
  """
 import os
 import sys

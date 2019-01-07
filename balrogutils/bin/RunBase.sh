@@ -9,6 +9,7 @@
 #                   <ncpu> - number of CPUs to be used by GalSim, by defauld the progrm will use
 #                            ncpu equal the number of bands
 #
+#
 echo $1
 echo $HOME
 HOSTNAME=`/bin/hostname`

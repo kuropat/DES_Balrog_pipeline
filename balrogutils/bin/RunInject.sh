@@ -4,7 +4,7 @@
 #    Balrog-GalSim/config directory and config file in it.
 #    ./Balrog-GalSim/inputs/Y3A2_COADDTILE_GEOM.fits should be preloaded
 #    $tile_dir/$tilename/psfs/ directory should contain pfs files,
-#     tis is created by running RunBase.sh script in modes befor injection
+#     this is created by running RunBase.sh script  before injection in mode
 #     (1+2+4) = 7, See RunBase.sh modes.
 #
 #     Also file ./TileList.csv will be prepared by RunBase.sh before this script,
