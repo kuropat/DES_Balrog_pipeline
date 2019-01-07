@@ -12,7 +12,7 @@ Executable modules are:
 
 #### BalrogBase.py
 
- The code provides a baseline for Balrog production
+ The code provides a baseline for Balrog production 
 
 Implemented steps:
 
