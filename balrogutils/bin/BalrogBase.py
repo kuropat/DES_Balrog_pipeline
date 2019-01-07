@@ -122,12 +122,12 @@ def coadd_assembleF(tilename,restemp):
     commandN = ['coadd_assemble', '--sci_file', '%s'% imName,  '--wgt_file', '%s'% weightName ]
     commandN +=[ '--msk_file', '%s' % maskName,  '--outname', '%s'% outName, '--xblock', '10',  '--yblock', '3' ]
     commandN +=[ '--maxcols', '100',  '--mincols', '1',  '--no-keep_sci_zeros',  '--magzero', '30',  '--tilename', '%s'% tilename]
-    commandN +=[  '--interp_image', 'MSK',  '--ydilate', '3']
+    commandN +=[  '--interp_image', 'MSK',  '--ydilate', '3','--clobber']
     if string.find(restemp,'det') >0:
         commandN = ['coadd_assemble', '--sci_file', '%s'% imName,  '--wgt_file', '%s'% weightName ]
         commandN +=[ '--msk_file', '%s' % maskName, '--band','det', '--outname', '%s'% outName, '--xblock', '10',  '--yblock', '3' ]
         commandN +=[ '--maxcols', '100',  '--mincols', '1',  '--no-keep_sci_zeros',  '--magzero', '30',  '--tilename', '%s'% tilename]
-        commandN +=[  '--interp_image', 'MSK',  '--ydilate', '3']
+        commandN +=[  '--interp_image', 'MSK',  '--ydilate', '3','--clobber']
     print commandN
 
     try:

@@ -11,7 +11,7 @@ from . import files
 class Coadd(dict):
     """
     information for coadds.  Can use the download() method to copy
-    to the local disk heirchy
+    to the local disk hierarchy
     """
     def __init__(self, medsconf, tilename, band, campaign='Y3A2_COADD', src=None, sources=None):
         dbname = 'dessci'

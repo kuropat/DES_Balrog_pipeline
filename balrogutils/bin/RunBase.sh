@@ -19,7 +19,8 @@ gconf=$3
 mode=$4
 ncpu=$5
 source /cvmfs/des.opensciencegrid.org/eeups/startupcachejob21i.sh
-setup galsim 1.5.1tmv # Brian's updated build
+setup pyyaml
+setup future 0.15.0+2
 setup swarp 2.36.2+3
 setup mofpsfex 0.3.2
 setup psycopg2 2.4.6+7

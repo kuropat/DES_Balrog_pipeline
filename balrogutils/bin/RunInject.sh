@@ -4,7 +4,7 @@
 #    Balrog-GalSim/config directory and config file in it.
 #    ./Balrog-GalSim/inputs/Y3A2_COADDTILE_GEOM.fits should be preloaded
 #    $tile_dir/$tilename/psfs/ directory should contain pfs files,
-#     tis is created by running RubBase.sh script in modes befor injection
+#     tis is created by running RunBase.sh script in modes befor injection
 #     (1+2+4) = 7, See RunBase.sh modes.
 #
 #     Also file ./TileList.csv will be prepared by RunBase.sh before this script,
@@ -24,18 +24,15 @@ medsbase=$1
 tilename=$2
 gconf=$3
 ncpu=$4
+unset PYTHONPATH
+LD_LIBRARY_PATH_SAVE=$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=/cvmfs/des.opensciencegrid.org/2015_Q2/eeups/SL6/eups/packages/Linux64/python/2.7.9+1/lib:$LD_LIBRARY_PATH
 source /cvmfs/des.opensciencegrid.org/eeups/startupcachejob21i.sh
 export IFDH_CP_MAXRETRIES=2
 DESTCACHE="persistent"
-setup python 2.7.9+1
-setup numpy 1.15.2
-setup fitsio 0.9.12rc1
-setup  -j ngmix v0.9.5
-setup  galsim 1.5.1tmv # Brian's updated builds
-setup numpy 1.15.2
-setup python 2.7.9+1
-
-#setup extralibs
+setup ngmix v1.2 
+setup python 2.7.15+1
+setup extralibs
 
 workdir=`pwd`
 
@@ -70,7 +67,7 @@ echo " Now in "`pwd`
 tile_dir=$medsbase
 config_dir="./Balrog-GalSim/config/"
 config_file=$gconf
-geom_file=".Balrog-GalSim/inputs/Y3A2_COADDTILE_GEOM.fits"
+geom_file="./Balrog-GalSim/inputs/Y3A2_COADDTILE_GEOM.fits"
 output_dir=$tile_dir
 psf_dir=$tile_dir"/"$tilename"/psfs"
 echo "psf_dir="$psf_dir
@@ -83,4 +80,4 @@ tile_list="./TileList.csv"
 echo "Start injection "
 echo "python ./Balrog-GalSim/balrog/balrog_injection.py $config_file -l $tile_list -g $geom_file -t $tile_dir -c $config_dir -p $psf_dir -o $output_dir -n $ncpu -v 1"
 python ./Balrog-GalSim/balrog/balrog_injection.py $config_file -l $tile_list -g $geom_file -t $tile_dir -c $config_dir -p $psf_dir -o $output_dir -n $ncpu -v 1  >> base_${tilename}.log
-
+LD_LIBRARY_PATH=$LD_LIBRARY_PATH_SAVE

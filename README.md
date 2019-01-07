@@ -1,7 +1,8 @@
 # DES_Balrog_pipeline
 ## Based on Erin Sheldon meds and mof and megamixer packages
 #### Modified and repacked version. Version 2.0
-  
+#### Updated version to work with latest Balrog-GalSim, python 2.7.15+1 and
+ngmix v1.2. The code was tested on both SL7 and SL6 hosts.  
 
 ###### code specific to des Balrog production is located in __balrogutils__ directory.
 
