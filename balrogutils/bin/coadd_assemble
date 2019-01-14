@@ -1,4 +1,4 @@
-#!/cvmfs/des.opensciencegrid.org/2015_Q2/eeups/SL6/eups/packages/Linux64/python/2.7.9+1/bin/python
+#!/usr/bin/env python
 
 import time
 import logging
